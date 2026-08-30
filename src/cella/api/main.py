@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 from cella import __version__
@@ -26,6 +27,15 @@ app = FastAPI(
     title="Cella API",
     version=__version__,
     summary="Discriminative cell-type identity across 12 human organ atlases.",
+)
+
+# Enable CORS for cross-origin requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Compress JSON payloads (graph/fingerprint responses shrink ~5x over the wire).
@@ -47,10 +57,7 @@ async def cache_headers(
         response.headers["Cache-Control"] = _CACHE_CONTROL
         response.headers["ETag"] = _RELEASE_ETAG
         # Revalidation with the current release -> 304, skip resending the body.
-        if (
-            response.status_code == 200
-            and request.headers.get("if-none-match") == _RELEASE_ETAG
-        ):
+        if response.status_code == 200 and request.headers.get("if-none-match") == _RELEASE_ETAG:
             return Response(
                 status_code=304,
                 headers={"ETag": _RELEASE_ETAG, "Cache-Control": _CACHE_CONTROL},
