@@ -18,10 +18,9 @@ COPY data/processed/ ./data/processed/
 # Install the cella package
 RUN uv sync --group api
 
-# Hugging Face Spaces default port is 7860
-ENV PORT=7860
-EXPOSE 7860
+# Default port for Render (Render sets $PORT dynamically)
+ENV PORT=10000
+EXPOSE 10000
 
-# Start FastAPI server
-CMD ["uv", "run", "--group", "api", "uvicorn", "cella.api.main:app", "--host", "0.0.0.0", "--port", "7860"]
-
+# Start FastAPI server binding dynamically to $PORT
+CMD ["sh", "-c", "uv run --group api uvicorn cella.api.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
