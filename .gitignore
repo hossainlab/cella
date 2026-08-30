@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# uv package manager
+# (uv.lock IS committed — do not ignore it)
+
+# Large data artifacts (>30 GB raw and h5ad matrices are ignored)
+/data/raw/*
+/data/counts_data/*
+!/data/raw/.gitkeep
+*.log
+
+# Note: data/processed/ (small static Parquet artifacts ~5-10 MB) IS tracked
+# to enable instant 1-click cloud deployment.
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+*.env
+
+# Node / Next.js
+web/node_modules/
+web/.next/
+web/out/
+web/.turbo/
+
+# OS / IDE / Editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
