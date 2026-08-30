@@ -16,6 +16,12 @@ const EXAMPLES = [
   { label: "Fibroblast", genes: "COL1A1, COL1A2, DCN, LUM, PDGFRA" },
 ];
 
+const POPULAR_GENES = [
+  "CD68", "MARCO", "C1QA", "LYZ", "FABP4",
+  "CD3D", "CD8A", "CD4", "GZMK", "MS4A1",
+  "COL1A1", "PECAM1", "EPCAM", "TREM2"
+];
+
 export default function Page() {
   const [genes, setGenes] = useState("");
   const [organ, setOrgan] = useState("");
@@ -40,16 +46,17 @@ export default function Page() {
   return (
     <div className="wrap">
       <header>
-        <h1>Reverse Lookup</h1>
-        <p className="sub">
-          The inverse of the Marker Atlas. Paste a gene signature — Cella scores
-          it against every organ model&apos;s <strong>discriminative weights</strong>{" "}
-          and ranks the cell types it most <em>defines</em>. A weak match flags a
-          possible novel or uncharacterized state.
+        <p className="eyebrow">Zero-Shot Identity Classifier</p>
+        <h1 style={{ fontSize: "2.4rem", margin: "0.2rem 0 0.85rem", letterSpacing: "-0.02em" }}>
+          Reverse Lookup Classifier
+        </h1>
+        <p className="sub" style={{ maxWidth: "68ch", fontSize: "1.05rem" }}>
+          Paste an experimental gene signature — Cella projects it against every organ model&apos;s{" "}
+          <strong>discriminative classifier weights</strong> to rank matching cell types in sub-milliseconds.
         </p>
       </header>
 
-      <details className="callout">
+      <details className="callout" style={{ marginBottom: "1.5rem" }}>
         <summary>How the score works</summary>
         <p className="note muted">
           For each cell type, the score is the <b>mean classifier weight</b> of your
@@ -67,17 +74,46 @@ export default function Page() {
           run(genes);
         }}
       >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+          <span style={{ fontSize: "0.86rem", fontWeight: 600, color: "var(--muted)" }}>Query Input</span>
+          <span style={{ fontSize: "0.78rem", color: "var(--pos)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.3rem" }}>
+            ⚡ &lt;2ms Latency | Processed in Real-Time
+          </span>
+        </div>
+
         <textarea
           className="rl-input"
           value={genes}
           onChange={(e) => setGenes(e.target.value)}
-          placeholder="Paste genes — comma, space, or newline separated&#10;e.g. CD3D CD8A GZMK"
+          placeholder="Paste genes — comma, space, or newline separated&#10;e.g. CD68, MARCO, C1QA, LYZ, FABP4"
           rows={4}
           aria-label="Gene signature"
         />
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", margin: "0.6rem 0 1rem", alignItems: "center" }}>
+          <span className="helper" style={{ marginRight: "0.2rem" }}>Quick add:</span>
+          {POPULAR_GENES.map((g) => (
+            <button
+              key={g}
+              type="button"
+              className="chip-btn"
+              onClick={() => {
+                const parts = genes.split(/[\s,]+/).filter(Boolean);
+                if (!parts.includes(g)) {
+                  parts.push(g);
+                  const next = parts.join(", ");
+                  setGenes(next);
+                }
+              }}
+            >
+              + {g}
+            </button>
+          ))}
+        </div>
+
         <div className="rl-controls">
           <label>
-            Organ
+            Organ Context
             <select value={organ} onChange={(e) => setOrgan(e.target.value)}>
               <option value="">All 12 organs</option>
               {ORGANS.map((o) => (
@@ -86,13 +122,13 @@ export default function Page() {
             </select>
           </label>
           <button type="submit" className="btn-primary" disabled={loading || !genes.trim()}>
-            {loading ? "Scoring…" : "Identify cell type →"}
+            {loading ? "Scoring Manifolds…" : "Analyze Signature →"}
           </button>
         </div>
       </form>
 
       <div className="examples">
-        <span className="helper">Try:</span>
+        <span className="helper">Presets:</span>
         {EXAMPLES.map((ex) => (
           <button
             key={ex.label}

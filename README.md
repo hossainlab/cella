@@ -9,7 +9,7 @@
 > **Cella** (Latin for *cell*) is an open-source biological knowledge and decision-support platform built on top of the **CellTypist Human Organ Atlases**. It surfaces the **learned discriminative classifier weights** and the **cross-organ cell-type relationship graph** — fundamental assets that no traditional single-cell atlas browser exposes interactively.
 
 <p align="center">
-  <img src="docs/images/cella_hero_overview.jpg" alt="Cella Single-Cell Knowledge Platform Overview" width="100%" />
+  <img src="docs/images/cella_hero_overview.png" alt="Cella Single-Cell Knowledge Platform Overview" width="100%" />
 </p>
 
 ---
@@ -55,30 +55,42 @@ When machine learning models (such as CellTypist’s regularized logistic regres
 ## 🛠️ The 5 Interactive Tools
 
 ### 1. 🏛️ Organ Browser (`/organs` & `/organs/[slug]`)
-Overview of the 12 human organs (Blood, Bone marrow, Heart, Hippocampus, Intestine, Kidney, Liver, Lung, Lymph node, Pancreas, Skeletal muscle, Spleen) — donor demographics, cell composition, 25k UMAP embeddings, TF activity, and cell-cell interactomes.
+Overview of the 12 human organs (Blood, Bone marrow, Heart, Hippocampus, Intestine, Kidney, Liver, Lung, Lymph node, Pancreas, Skeletal muscle, Spleen) with 25k UMAP embeddings, cell composition, TF activity, and cell-cell interactomes.
+
+<p align="center">
+  <img src="docs/images/cella_organ_browser.png" alt="Human Organ Browser" width="100%" />
+</p>
+
+<p align="center">
+  <img src="docs/images/cella_organ_detail.png" alt="Organ Detail with 25,000 Single-Cell Canvas UMAP" width="100%" />
+</p>
 
 ### 2. 🎯 Discriminative Marker Atlas (`/marker-atlas`)
 Search any cell type to inspect its universal core defining genes versus tissue-adapted markers.
 
 <p align="center">
-  <img src="docs/images/cella_marker_atlas.jpg" alt="Discriminative Marker Atlas" width="100%" />
+  <img src="docs/images/cella_marker_atlas.png" alt="Discriminative Marker Atlas" width="100%" />
 </p>
 
 ### 3. 🔍 Fingerprint Explorer (`/fingerprint`)
 Side-by-side heatmaps of signed positive/negative classifier weights across organs.
 
-### 4. 🕸️ Relationship Graph (`/graph`)
-Interactive cross-tissue network of 145 harmonized cell types, filterable by tissue and similarity threshold.
-
 <p align="center">
-  <img src="docs/images/cella_relationship_graph.jpg" alt="Cross-Tissue Relationship Graph" width="100%" />
+  <img src="docs/images/cella_fingerprint.png" alt="Fingerprint Explorer" width="100%" />
 </p>
 
-### 5. ⚡ Reverse Lookup (`/reverse-lookup`)
+### 4. ⚡ Reverse Lookup (`/reverse-lookup`)
 Paste experimental gene signatures to score them against all organ models, identify candidate cell types, and detect novel/uncharacterized states in $<2\text{ ms}$.
 
 <p align="center">
-  <img src="docs/images/cella_reverse_lookup.jpg" alt="Reverse-Lookup Signature Classifier" width="100%" />
+  <img src="docs/images/cella_reverse_lookup.png" alt="Reverse-Lookup Signature Classifier" width="100%" />
+</p>
+
+### 5. 📖 About & Research Overview (`/about`)
+Methodological rationale, consensus metric formulations, and full-stack systems engineering overview.
+
+<p align="center">
+  <img src="docs/images/cella_about.png" alt="About and Research Page" width="100%" />
 </p>
 
 ---

@@ -8,6 +8,9 @@ const EXAMPLES = [
   { q: "macrophage", note: "tissue-adapted — no universal genes" },
   { q: "CD8", note: "conserved — shared genes everywhere" },
   { q: "fibroblast", note: "stromal, cross-organ" },
+  { q: "endothelial", note: "vascular lineage" },
+  { q: "B cell", note: "humoral immunity" },
+  { q: "monocyte", note: "circulating myeloid" },
 ];
 
 export default function Page() {
@@ -62,11 +65,13 @@ export default function Page() {
   return (
     <div className="wrap">
       <header>
-        <h1>Discriminative Marker Atlas</h1>
-        <p className="sub">
-          Pick a cell type and see <strong>which genes define it</strong> — and
-          how that definition changes from organ to organ. Built on CellTypist
-          classifier weights across 12 human organs.
+        <p className="eyebrow">Discriminative Feature Space</p>
+        <h1 style={{ fontSize: "2.4rem", margin: "0.2rem 0 0.85rem", letterSpacing: "-0.02em" }}>
+          Discriminative Marker Atlas
+        </h1>
+        <p className="sub" style={{ maxWidth: "68ch", fontSize: "1.05rem" }}>
+          Pick a cell type to discover <strong>which genes define its identity</strong> — and
+          how that definition shifts across 12 human organs. Built on CellTypist regularized ML classifier weights.
         </p>
       </header>
 

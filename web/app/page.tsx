@@ -91,6 +91,73 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Tool Showcase Grid */}
+      <section className="home-showcase">
+        <div className="section-head">
+          <div>
+            <p className="eyebrow" style={{ marginBottom: "0.4rem" }}>Interactive Toolkit</p>
+            <h2>Explore Single-Cell Knowledge</h2>
+            <p>From machine learning classifier manifolds to cross-tissue regulatory networks.</p>
+          </div>
+        </div>
+
+        <div className="home-tools-grid">
+          <Link href="/marker-atlas" className="home-tool-card">
+            <div className="home-tool-icon-wrap">🎯</div>
+            <h3 className="home-tool-title">Discriminative Marker Atlas</h3>
+            <p className="home-tool-desc">
+              Discover what mathematically defines a cell type. Decompose markers into Universal Core vs. Tissue-Adapted Identity across 12 human organs.
+            </p>
+            <span className="home-tool-action">Open Atlas →</span>
+          </Link>
+
+          <Link href="/organs" className="home-tool-card">
+            <div className="home-tool-icon-wrap">🏛️</div>
+            <h3 className="home-tool-title">Human Organ Browser</h3>
+            <p className="home-tool-desc">
+              Browse 12 harmonized organ atlases with 25k UMAP embeddings, cell composition, TF regulons, and cell-cell interactomes.
+            </p>
+            <span className="home-tool-action">Browse Organs →</span>
+          </Link>
+
+          <Link href="/reverse-lookup" className="home-tool-card">
+            <div className="home-tool-icon-wrap">⚡</div>
+            <h3 className="home-tool-title">Reverse Lookup Classifier</h3>
+            <p className="home-tool-desc">
+              Paste experimental gene lists to score them against all organ models in &lt;2 ms, deconvolve cell types, and detect novel states.
+            </p>
+            <span className="home-tool-action">Run Query →</span>
+          </Link>
+
+          <Link href="/graph" className="home-tool-card">
+            <div className="home-tool-icon-wrap">🕸️</div>
+            <h3 className="home-tool-title">Relationship Graph</h3>
+            <p className="home-tool-desc">
+              Navigate the cross-tissue network of 145 harmonized cell types, explore phenotypic convergence, and inspect shared lineage genes.
+            </p>
+            <span className="home-tool-action">Explore Graph →</span>
+          </Link>
+
+          <Link href="/fingerprint" className="home-tool-card">
+            <div className="home-tool-icon-wrap">🔍</div>
+            <h3 className="home-tool-title">Fingerprint Explorer</h3>
+            <p className="home-tool-desc">
+              Side-by-side comparative matrices of positive and negative classifier weights for any cell type across all organs.
+            </p>
+            <span className="home-tool-action">Compare Fingerprints →</span>
+          </Link>
+
+          <Link href="/about" className="home-tool-card">
+            <div className="home-tool-icon-wrap">📖</div>
+            <h3 className="home-tool-title">About &amp; Research</h3>
+            <p className="home-tool-desc">
+              Learn the scientific motivation, methodology, and computational contributions behind the Cella platform.
+            </p>
+            <span className="home-tool-action">Read Overview →</span>
+          </Link>
+        </div>
+      </section>
+
       <footer className="foot">
         Data: official CellTypist organ atlases &amp; pretrained models. Developed by Md. Jubayer Hossain (DeepBio).{" "}
         <Link href="/about" style={{ color: "var(--accent)" }}>

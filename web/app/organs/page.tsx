@@ -18,12 +18,28 @@ const COLS: { key: SortKey; label: string; num: boolean }[] = [
   { key: "n_donors", label: "Donors", num: true },
 ];
 
+const ORGAN_ICONS: Record<string, string> = {
+  Heart: "🫀",
+  Lung: "🫁",
+  Liver: "🩺",
+  Kidney: "🫘",
+  Blood: "🩸",
+  Hippocampus: "🧠",
+  Intestine: "🦠",
+  Pancreas: "🧫",
+  Spleen: "🛡️",
+  "Bone marrow": "🦴",
+  "Lymph node": "🔬",
+  "Skeletal muscle": "💪",
+};
+
 export default function OrgansPage() {
   const [organs, setOrgans] = useState<OrganSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("n_cells");
   const [asc, setAsc] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
   useEffect(() => {
     listOrgans().then(setOrgans).catch((e) => setError(String(e)));
@@ -56,77 +72,139 @@ export default function OrgansPage() {
   return (
     <div className="wrap">
       <header>
-        <h1>Organ Browser</h1>
-        <p className="sub">
-          Browse the 12 harmonized human organ atlases. Each row is one organ —
-          open it for source datasets, cell-type composition, and per-gene
-          expression across cell types.
+        <p className="eyebrow">Interactive Tissue Atlases</p>
+        <h1 style={{ fontSize: "2.4rem", margin: "0.2rem 0 0.85rem", letterSpacing: "-0.02em" }}>
+          Human Organ Browser
+        </h1>
+        <p className="sub" style={{ maxWidth: "68ch", fontSize: "1.05rem" }}>
+          Explore 12 deeply curated human organ atlases harmonized from 38 datasets.
+          Inspect cell composition, 25k UMAP manifolds, transcription factor regulons, and cell-cell interactomes.
         </p>
       </header>
 
       {error && <p className="error">Error: {error}</p>}
 
-      <form className="atlas-search" onSubmit={(e) => e.preventDefault()} role="search">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Filter organs…"
-          aria-label="Filter organs"
-        />
-      </form>
+      <div className="view-toggle-bar">
+        <form className="atlas-search" style={{ margin: 0, flex: 1, maxWidth: "420px" }} onSubmit={(e) => e.preventDefault()} role="search">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search organs (e.g. Lung, Brain, Blood)…"
+            aria-label="Filter organs"
+          />
+        </form>
+
+        <div className="view-toggle">
+          <button
+            type="button"
+            className={`view-btn ${viewMode === "grid" ? "active" : ""}`}
+            onClick={() => setViewMode("grid")}
+          >
+            <span>⊞</span> Grid View
+          </button>
+          <button
+            type="button"
+            className={`view-btn ${viewMode === "table" ? "active" : ""}`}
+            onClick={() => setViewMode("table")}
+          >
+            <span>☰</span> Table View
+          </button>
+        </div>
+      </div>
 
       <p className="helper mb">
-        {rows.length} organ{rows.length === 1 ? "" : "s"}. Click a column header to
-        sort; click a row to open the atlas.
+        Showing {rows.length} of {organs.length} human organ atlases.
       </p>
 
-      <div className="table-scroll">
-        <table className="data-table">
-          <thead>
-            <tr>
-              {COLS.map((c) => (
-                <th
-                  key={c.key}
-                  className={`${c.num ? "num" : ""} ${sortKey === c.key ? "sorted" : ""}`}
-                  onClick={() => toggleSort(c.key)}
-                >
-                  {c.label}
-                  <span className="arrow">
-                    {sortKey === c.key ? (asc ? " ▲" : " ▼") : ""}
-                  </span>
-                </th>
-              ))}
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((o) => (
-              <tr
-                key={o.slug}
-                className="data-row"
-                onClick={() => {
-                  window.location.href = `/organs/${o.slug}`;
-                }}
-              >
-                <td className="organ-name">{o.organ}</td>
-                <td className="num">{o.n_cells.toLocaleString()}</td>
-                <td className="num">{o.n_cell_types}</td>
-                <td className="num">{o.n_datasets}</td>
-                <td className="num">{o.n_donors}</td>
-                <td className="num">
-                  <Link
-                    href={`/organs/${o.slug}`}
-                    className="row-open"
-                    onClick={(e) => e.stopPropagation()}
+      {viewMode === "grid" ? (
+        <div className="organ-grid-modern">
+          {rows.map((o) => {
+            const icon = ORGAN_ICONS[o.organ] || "🧬";
+            return (
+              <Link key={o.slug} href={`/organs/${o.slug}`} className="organ-card-modern">
+                <div className="organ-card-header">
+                  <div className="organ-title-wrap">
+                    <h3 className="organ-name">{o.organ}</h3>
+                    <span className="organ-cell-count">{o.n_cells.toLocaleString()} cells</span>
+                  </div>
+                  <div className="organ-icon-circle">{icon}</div>
+                </div>
+
+                <div className="organ-metrics-grid">
+                  <div className="organ-metric-item">
+                    <span className="organ-metric-val">{o.n_cell_types}</span>
+                    <span className="organ-metric-lbl">Cell Types</span>
+                  </div>
+                  <div className="organ-metric-item">
+                    <span className="organ-metric-val">{o.n_datasets}</span>
+                    <span className="organ-metric-lbl">Datasets</span>
+                  </div>
+                  <div className="organ-metric-item">
+                    <span className="organ-metric-val">{o.n_donors}</span>
+                    <span className="organ-metric-lbl">Donors</span>
+                  </div>
+                </div>
+
+                <div className="organ-card-footer">
+                  <span>Explore Atlas</span>
+                  <span>→</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                {COLS.map((c) => (
+                  <th
+                    key={c.key}
+                    className={`${c.num ? "num" : ""} ${sortKey === c.key ? "sorted" : ""}`}
+                    onClick={() => toggleSort(c.key)}
                   >
-                    open →
-                  </Link>
-                </td>
+                    {c.label}
+                    <span className="arrow">
+                      {sortKey === c.key ? (asc ? " ▲" : " ▼") : ""}
+                    </span>
+                  </th>
+                ))}
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {rows.map((o) => (
+                <tr
+                  key={o.slug}
+                  className="data-row"
+                  onClick={() => {
+                    window.location.href = `/organs/${o.slug}`;
+                  }}
+                >
+                  <td className="organ-name">
+                    <span style={{ marginRight: "0.5rem" }}>{ORGAN_ICONS[o.organ] || "🧬"}</span>
+                    {o.organ}
+                  </td>
+                  <td className="num">{o.n_cells.toLocaleString()}</td>
+                  <td className="num">{o.n_cell_types}</td>
+                  <td className="num">{o.n_datasets}</td>
+                  <td className="num">{o.n_donors}</td>
+                  <td className="num">
+                    <Link
+                      href={`/organs/${o.slug}`}
+                      className="row-open"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      open →
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
