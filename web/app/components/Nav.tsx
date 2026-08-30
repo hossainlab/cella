@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { TOOLS } from "@/lib/tools";
+import CellaLogo from "./CellaLogo";
 
 export default function Nav() {
   const pathname = usePathname();
@@ -10,8 +11,8 @@ export default function Nav() {
     <nav className="nav">
       <div className="nav-inner">
         <Link href="/" className="brand">
-          <span className="brand-mark">◍</span>
-          Cella
+          <CellaLogo size={24} />
+          <span>Cella</span>
         </Link>
         <div className="nav-links">
           <Link
