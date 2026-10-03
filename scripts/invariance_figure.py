@@ -41,7 +41,8 @@ def main() -> None:
     null = pairs.loc[~pairs["matched"], "cosine"]
     null_mu, null_sd = null.mean(), null.std()
 
-    specific = scores[~scores["low_granularity"]].sort_values("mean_cosine")
+    specific = scores[scores["tier"] == "specific"].sort_values("invariance")
+    resolved = scores[scores["tier"] == "granularity-resolved"].sort_values("invariance")
 
     fig, (ax_a, ax_b) = plt.subplots(
         1, 2, figsize=(15, 9), gridspec_kw={"width_ratios": [2.3, 1]}
@@ -59,8 +60,8 @@ def main() -> None:
         label="null ±1 SD (mismatched cell types)",
     )
     ax_a.axvline(null_mu, color="#555555", ls="--", lw=1.2, zorder=1, label="null mean")
-    ax_a.hlines(y, null_mu, specific["mean_cosine"], color=colors, lw=2.2, zorder=2)
-    ax_a.scatter(specific["mean_cosine"], y, c=colors, s=70, zorder=3, edgecolor="white")
+    ax_a.hlines(y, null_mu, specific["invariance"], color=colors, lw=2.2, zorder=2)
+    ax_a.scatter(specific["invariance"], y, c=colors, s=70, zorder=3, edgecolor="white")
     labels = [
         f"{lab}  ({n})"
         for lab, n in zip(specific["ontology_label"], specific["n_organs"], strict=True)
@@ -70,19 +71,20 @@ def main() -> None:
     ax_a.set_xlabel("Mean cross-organ cosine of discriminative weights", fontsize=11)
     ax_a.set_title(
         "A  Organ-invariance of discriminative cell-type identity\n"
-        f"{len(specific)} cell types annotated in ≥2 organs (organ count in parentheses)",
+        f"{len(specific)} specifically annotated cell types in ≥2 organs "
+        "(organ count in parentheses)",
         fontsize=12,
         loc="left",
     )
-    ax_a.legend(loc="lower right", fontsize=9, framealpha=0.95)
+    ax_a.legend(loc="lower right", fontsize=8.5, framealpha=0.95)
     ax_a.grid(axis="x", alpha=0.25)
     ax_a.set_axisbelow(True)
 
     # --- Panel B: by lineage ---------------------------------------------------
     # ascending: matplotlib draws the first group at the bottom, so the most
     # invariant lineage ends up on top, matching panel A.
-    order = specific.groupby("lineage")["mean_cosine"].median().sort_values().index
-    data = [specific.loc[specific["lineage"] == lin, "mean_cosine"].to_numpy() for lin in order]
+    order = specific.groupby("lineage")["invariance"].median().sort_values().index
+    data = [specific.loc[specific["lineage"] == lin, "invariance"].to_numpy() for lin in order]
     box = ax_b.boxplot(
         data, vert=False, widths=0.6, patch_artist=True, showfliers=False, zorder=2
     )
@@ -99,15 +101,30 @@ def main() -> None:
             s=42,
             zorder=3,
             edgecolor="white",
+            label="specific (tier 1)" if i == 1 else None,
         )
+        # Coarse terms rescued on their comparable organs, drawn hollow: they
+        # replicate the direction but stay confounded (see stability analysis).
+        extra = resolved.loc[resolved["lineage"] == lin, "invariance"].to_numpy()
+        if len(extra):
+            ax_b.scatter(
+                extra,
+                [i] * len(extra),
+                facecolor="none",
+                edgecolor=LINEAGE_COLORS.get(lin, "#999999"),
+                s=52,
+                lw=1.6,
+                zorder=3,
+                label="granularity-resolved (tier 2)" if i == 1 else None,
+            )
     ax_b.axvline(null_mu, color="#555555", ls="--", lw=1.2, zorder=1)
     ax_b.set_yticklabels(
         [f"{lin}  (n={len(d)})" for lin, d in zip(order, data, strict=True)], fontsize=9
     )
     ax_b.set_xlabel("Mean cross-organ cosine", fontsize=11)
 
-    circ = specific.loc[specific["lineage"].isin(CIRCULATING), "mean_cosine"]
-    res = specific.loc[specific["lineage"].isin(RESIDENT), "mean_cosine"]
+    circ = specific.loc[specific["lineage"].isin(CIRCULATING), "invariance"]
+    res = specific.loc[specific["lineage"].isin(RESIDENT), "invariance"]
     _, pval = mannwhitneyu(circ, res, alternative="greater")
     ax_b.set_title(
         "B  Grouped by lineage\n"
@@ -116,6 +133,8 @@ def main() -> None:
         fontsize=12,
         loc="left",
     )
+    ax_b.legend(fontsize=8, loc="lower right", framealpha=0.95)
+    ax_b.legend(fontsize=8, loc="lower right", framealpha=0.95)
     ax_b.grid(axis="x", alpha=0.25)
     ax_b.set_axisbelow(True)
 

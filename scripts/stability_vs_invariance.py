@@ -54,27 +54,44 @@ def main() -> None:
     )
 
     merged = scores.merge(per_cl, on="cl_id", how="inner")
-    specific = merged[~merged["low_granularity"]].copy()
-    specific["normalized_invariance"] = specific["mean_cosine"] / specific["stability"]
+    specific = merged[merged["tier"].isin(["specific", "granularity-resolved"])].copy()
+    specific["normalized_invariance"] = specific["invariance"] / specific["stability"]
     specific.to_parquet(PROCESSED / "invariance_with_stability.parquet", index=False)
 
-    print(f"{len(specific)} specific cell types with matched-n stability\n")
+    counts = specific["tier"].value_counts()
+    print(
+        f"{len(specific)} cell types with matched-n stability "
+        f"({counts.get('specific', 0)} specific, "
+        f"{counts.get('granularity-resolved', 0)} granularity-resolved)\n"
+    )
 
-    rho, pval = spearmanr(specific["mean_cosine"], specific["stability"])
-    print(f"Spearman(invariance, stability) = {rho:+.3f}  p = {pval:.3f}")
-    print("  -> if ~0, coefficient noise does not explain the invariance gradient\n")
+    rho, pval = spearmanr(specific["invariance"], specific["stability"])
+    print("Spearman(invariance, stability):")
+    print(f"  tier 1 + 2  rho = {rho:+.3f}  p = {pval:.3f}   (n={len(specific)})")
+    for tier in ("specific", "granularity-resolved"):
+        sub = specific[specific["tier"] == tier]
+        if len(sub) > 3:
+            r, pv = spearmanr(sub["invariance"], sub["stability"])
+            print(f"  {tier:20s} rho = {r:+.3f}  p = {pv:.3f}   (n={len(sub)})")
+    print("  -> tier 1 shows no association, so coefficient noise does not explain")
+    print("     the gradient among specifically annotated cell types. Tier 2 does")
+    print("     show one: coarse terms pool heterogeneous populations, which makes")
+    print("     their coefficients both noisier and less consistent across organs.")
+    print("     The rescued terms are therefore reported as secondary evidence and")
+    print("     the headline claim rests on tier 1.\n")
 
-    circ = specific[specific["lineage"].isin(CIRCULATING)]
-    res = specific[specific["lineage"].isin(RESIDENT)]
+    tier1 = specific[specific["tier"] == "specific"]
+    circ = tier1[tier1["lineage"].isin(CIRCULATING)]
+    res = tier1[tier1["lineage"].isin(RESIDENT)]
     _, p_stab = mannwhitneyu(circ["stability"], res["stability"], alternative="two-sided")
-    _, p_inv = mannwhitneyu(circ["mean_cosine"], res["mean_cosine"], alternative="greater")
-    print(f"circulating (n={len(circ)}) vs tissue-resident (n={len(res)}):")
+    _, p_inv = mannwhitneyu(circ["invariance"], res["invariance"], alternative="greater")
+    print(f"TIER 1 ONLY -- circulating (n={len(circ)}) vs tissue-resident (n={len(res)}):")
     print(
         f"  stability   {circ['stability'].median():.3f} vs {res['stability'].median():.3f}"
         f"   two-sided p = {p_stab:.3f}"
     )
     print(
-        f"  invariance  {circ['mean_cosine'].median():.3f} vs {res['mean_cosine'].median():.3f}"
+        f"  invariance  {circ['invariance'].median():.3f} vs {res['invariance'].median():.3f}"
         f"   one-sided p = {p_inv:.2e}"
     )
 
@@ -88,26 +105,41 @@ def main() -> None:
 
     # --- figure ---------------------------------------------------------------
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 6))
-    colors = [LINEAGE_COLORS.get(x, "#999999") for x in specific["lineage"]]
 
+    t1 = specific[specific["tier"] == "specific"]
+    t2 = specific[specific["tier"] == "granularity-resolved"]
     ax1.scatter(
-        specific["stability"], specific["mean_cosine"], c=colors, s=90,
-        edgecolor="white", zorder=3,
+        t1["stability"], t1["invariance"],
+        c=[LINEAGE_COLORS.get(x, "#999999") for x in t1["lineage"]],
+        s=90, edgecolor="white", zorder=3,
     )
-    lim = [0, max(specific["stability"].max(), specific["mean_cosine"].max()) * 1.12]
+    ax1.scatter(
+        t2["stability"], t2["invariance"], facecolor="none",
+        edgecolor=[LINEAGE_COLORS.get(x, "#999999") for x in t2["lineage"]],
+        s=95, lw=1.7, zorder=3,
+    )
+    lim = [0, max(specific["stability"].max(), specific["invariance"].max()) * 1.12]
     ax1.plot(lim, lim, ls=":", color="#777777", lw=1.2, zorder=1,
              label="cross-organ = within-organ ceiling")
     ax1.set_xlabel("Within-organ replicate stability (matched n)", fontsize=11)
-    ax1.set_ylabel("Cross-organ invariance (mean cosine)", fontsize=11)
+    ax1.set_ylabel("Cross-organ invariance", fontsize=11)
+    rho1, p1 = spearmanr(t1["invariance"], t1["stability"])
+    rho2, p2 = spearmanr(t2["invariance"], t2["stability"])
     ax1.set_title(
-        f"A  Noise does not explain the gradient\nSpearman rho = {rho:+.2f}, p = {pval:.2f}",
+        "A  Noise does not explain the tier-1 gradient\n"
+        f"tier 1 rho = {rho1:+.2f}, p = {p1:.2f}   |   "
+        f"tier 2 rho = {rho2:+.2f}, p = {p2:.3f}",
         fontsize=12, loc="left",
     )
     from matplotlib.lines import Line2D
 
     present = [lin for lin in LINEAGE_COLORS if (specific["lineage"] == lin).any()]
     handles = [
-        Line2D([], [], ls=":", color="#777777", label="cross-organ = within-organ ceiling")
+        Line2D([], [], ls=":", color="#777777", label="cross-organ = within-organ ceiling"),
+        Line2D([], [], marker="o", ls="", color="#444444", label="tier 1 (specific)",
+               markeredgecolor="white"),
+        Line2D([], [], marker="o", ls="", markerfacecolor="none", color="#444444",
+               label="tier 2 (granularity-resolved)"),
     ] + [
         Line2D([], [], marker="o", ls="", color=LINEAGE_COLORS[lin], label=lin,
                markeredgecolor="white")
@@ -119,7 +151,7 @@ def main() -> None:
 
     groups = ["circulating", "tissue-resident"]
     data_stab = [circ["stability"], res["stability"]]
-    data_inv = [circ["mean_cosine"], res["mean_cosine"]]
+    data_inv = [circ["invariance"], res["invariance"]]
     x = np.arange(2)
     for offset, data, lab, col in [
         (-0.17, data_stab, "within-organ stability", "#999999"),
@@ -146,7 +178,7 @@ def main() -> None:
     )
     ax2.set_ylabel("Cosine", fontsize=11)
     ax2.set_title(
-        "B  Stability is comparable; invariance is not\n"
+        "B  Tier 1: stability is comparable; invariance is not\n"
         f"stability p = {p_stab:.2f} (n.s.)   invariance p = {p_inv:.1e}",
         fontsize=12, loc="left",
     )

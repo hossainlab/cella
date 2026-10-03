@@ -244,3 +244,37 @@ def assign_lineages(cl_ids: list[str]) -> dict[str, str]:
             (name for anc, name in LINEAGE_ANCESTORS if anc in lineage_set), "Other"
         )
     return out
+
+
+def comparable_organs(cell_type_organ: pd.DataFrame) -> dict[str, list[str]]:
+    """Organs where each CL term was annotated as a whole, not as a residual bin.
+
+    A parent term such as *macrophage* means different things in different
+    organs: where the atlas also annotates a subtype (alveolar macrophage in
+    Lung, microglia in Hippocampus), the parent label holds only the cells left
+    over, which is not the same population as the parent label in an organ
+    where no subtype was split out. Comparing those organs measures annotation
+    practice rather than biology.
+
+    For every term this returns the organs in which **no descendant of that
+    term is separately annotated**, so the label covers the whole population
+    and the organs are comparable to one another.
+    """
+    from cellxgene_ontology_guide.ontology_parser import OntologyParser
+
+    parser = OntologyParser()
+    present = set(cell_type_organ["cl_id"])
+    per_organ = {
+        organ: set(rows["cl_id"])
+        for organ, rows in cell_type_organ.groupby("organ", sort=False)
+    }
+
+    out: dict[str, list[str]] = {}
+    for cl_id in sorted(present):
+        try:
+            descendants = (set(parser.get_term_descendants(cl_id)) & present) - {cl_id}
+        except (KeyError, ValueError):
+            descendants = set()
+        organs = sorted(set(cell_type_organ.loc[cell_type_organ["cl_id"] == cl_id, "organ"]))
+        out[cl_id] = [o for o in organs if not (descendants & per_organ.get(o, set()))]
+    return out
