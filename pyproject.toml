@@ -67,7 +67,9 @@ analysis = [
     "pandas>=2.2",
     "pyarrow>=16.0",
     "scipy>=1.13",
-    "scikit-learn>=1.4",
+    # <1.7 keeps LogisticRegression(multi_class=...), which celltypist.train
+    # passes; stability replicates must use the published training code path.
+    "scikit-learn>=1.4,<1.7",
     "matplotlib>=3.8",
     "cellxgene-ontology-guide>=1.11.1",
 ]
