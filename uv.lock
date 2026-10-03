@@ -474,6 +474,17 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+analysis = [
+    { name = "cellxgene-ontology-guide" },
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "pandas", version = "3.0.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "pyarrow" },
+    { name = "scikit-learn" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
 api = [
     { name = "alembic" },
     { name = "fastapi" },
@@ -526,6 +537,15 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+analysis = [
+    { name = "cellxgene-ontology-guide", specifier = ">=1.11.1" },
+    { name = "matplotlib", specifier = ">=3.8" },
+    { name = "numpy", specifier = ">=1.26" },
+    { name = "pandas", specifier = ">=2.2" },
+    { name = "pyarrow", specifier = ">=16.0" },
+    { name = "scikit-learn", specifier = ">=1.4" },
+    { name = "scipy", specifier = ">=1.13" },
+]
 api = [
     { name = "alembic", specifier = ">=1.13" },
     { name = "fastapi", specifier = ">=0.111" },

@@ -59,6 +59,19 @@ api = [
     "plotly>=6.9.0",
 ]
 
+# Offline analyses over the extracted weights (scripts/invariance_*.py).
+# Lighter than `pipeline`: unpickles the CellTypist models directly, so it needs
+# scikit-learn for the estimator classes but not scanpy/anndata.
+analysis = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "pyarrow>=16.0",
+    "scipy>=1.13",
+    "scikit-learn>=1.4",
+    "matplotlib>=3.8",
+    "cellxgene-ontology-guide>=1.11.1",
+]
+
 # Dev tooling (installed by default).
 dev = [
     "pytest>=8.2",
