@@ -1,6 +1,6 @@
 // Proxy /api/* to the FastAPI backend so the browser makes same-origin calls
 // (no CORS). Override the target with API_BASE when the backend runs elsewhere.
-const API_BASE = process.env.API_BASE || "http://localhost:8137";
+const API_BASE = process.env.API_BASE || "http://127.0.0.1:8137";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
