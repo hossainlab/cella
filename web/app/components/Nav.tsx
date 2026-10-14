@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { TOOLS } from "@/lib/tools";
 import CellaLogo from "./CellaLogo";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Nav() {
   const pathname = usePathname();
@@ -34,6 +35,7 @@ export default function Nav() {
               </Link>
             );
           })}
+          <ThemeToggle />
         </div>
       </div>
     </nav>

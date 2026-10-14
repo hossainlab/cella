@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { categoryColor } from "@/lib/palette";
+import { cssVar, useResolvedTheme } from "@/lib/theme";
 import type { OrganEmbedding } from "@/lib/types";
 
 const W = 560;
@@ -11,6 +12,7 @@ const PAD = 12;
 export default function UmapPlot({ emb }: { emb: OrganEmbedding }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hover, setHover] = useState<number | null>(null); // hovered cell-type index
+  const theme = useResolvedTheme();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -23,6 +25,7 @@ export default function UmapPlot({ emb }: { emb: OrganEmbedding }) {
     ctx.clearRect(0, 0, W, H);
 
     const { x, y, c } = emb;
+    const dim = cssVar("--dot-dim");
     const minX = Math.min(...x);
     const maxX = Math.max(...x);
     const minY = Math.min(...y);
@@ -35,16 +38,14 @@ export default function UmapPlot({ emb }: { emb: OrganEmbedding }) {
       // invert y so up is positive
       const py = H - PAD - (y[i] - minY) * sy;
       const active = hover === null || hover === c[i];
-      ctx.fillStyle = active
-        ? categoryColor(c[i])
-        : "rgba(140,140,150,0.10)";
+      ctx.fillStyle = active ? categoryColor(c[i]) : dim;
       ctx.globalAlpha = active ? 0.75 : 1;
       ctx.beginPath();
       ctx.arc(px, py, active && hover !== null ? 2.2 : 1.6, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
-  }, [emb, hover]);
+  }, [emb, hover, theme]);
 
   return (
     <div className="umap">

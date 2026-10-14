@@ -1,4 +1,8 @@
+/* Theme: dark is the base; light applies when chosen explicitly
+   (data-theme="light") or when the OS prefers light and no choice is stored.
+   The choice is set before paint by the inline script in app/layout.tsx. */
 :root {
+  color-scheme: dark;
   --bg: #07090e;
   --bg-gradient: radial-gradient(circle at 50% -10%, rgba(6, 182, 212, 0.12) 0%, rgba(15, 23, 42, 0) 70%);
   --panel: rgba(15, 23, 42, 0.75);
@@ -14,10 +18,81 @@
   --pos: #10b981;
   --neg: #f43f5e;
   --consensus: #fbbf24;
+  --on-accent: #04131f;
+  --brand-from: #ffffff;
+  --stat-from: #ffffff;
+  --stat-to: #cbd5e1;
+  --nav-active-text: #ffffff;
+  --nav-active-bg: linear-gradient(135deg, rgba(6, 182, 212, 0.22) 0%, rgba(59, 130, 246, 0.22) 100%);
+  --shadow-strong: 0 20px 50px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-md: 0 12px 36px -12px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 4px 12px -2px rgba(0, 0, 0, 0.3);
+  --glow: rgba(0, 229, 255, 0.4);
+  --badge-theory: #c084fc;
+  --badge-ontology: #60a5fa;
+  --badge-graph: #34d399;
+  --badge-ml: #fbbf24;
+  --badge-multiomics: #f472b6;
+  --badge-systems: #22d3ee;
+  /* Read by the Plotly / canvas code at draw time (lib/theme.ts). */
+  --plot-text: #9aa3b2;
+  --plot-grid: rgba(148, 163, 184, 0.16);
+  --plot-hover-bg: #1e222b;
+  --plot-hover-text: #e6e8ec;
+  --plot-edge: rgba(130, 140, 160, 0.18);
+  --plot-edge-hot: rgba(110, 168, 254, 0.55);
+  --plot-node-line: rgba(0, 0, 0, 0.35);
+  --plot-node-selected: #ffffff;
+  --dot-dim: rgba(140, 140, 150, 0.10);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f8fafc;
+  --bg-gradient: radial-gradient(circle at 50% -10%, rgba(14, 165, 233, 0.08) 0%, rgba(248, 250, 252, 0) 70%);
+  --panel: rgba(255, 255, 255, 0.85);
+  --panel-solid: #ffffff;
+  --panel-2: #f1f5f9;
+  --border: #e2e8f0;
+  --border-glow: rgba(14, 165, 233, 0.4);
+  --text: #0f172a;
+  --muted: #64748b;
+  --accent: #0284c7;
+  --accent-2: #0ea5e9;
+  --accent-purple: #9333ea;
+  --pos: #059669;
+  --neg: #e11d48;
+  --consensus: #d97706;
+  --on-accent: #ffffff;
+  --brand-from: #0f172a;
+  --stat-from: #0f172a;
+  --stat-to: #334155;
+  --nav-active-text: #0c4a6e;
+  --nav-active-bg: linear-gradient(135deg, rgba(14, 165, 233, 0.14) 0%, rgba(59, 130, 246, 0.14) 100%);
+  --shadow-strong: 0 20px 45px -24px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 12px 30px -16px rgba(15, 23, 42, 0.18);
+  --shadow-sm: 0 4px 12px -4px rgba(15, 23, 42, 0.12);
+  --glow: rgba(2, 132, 199, 0.3);
+  --badge-theory: #7e22ce;
+  --badge-ontology: #1d4ed8;
+  --badge-graph: #047857;
+  --badge-ml: #b45309;
+  --badge-multiomics: #be185d;
+  --badge-systems: #0e7490;
+  --plot-text: #475569;
+  --plot-grid: rgba(15, 23, 42, 0.08);
+  --plot-hover-bg: #ffffff;
+  --plot-hover-text: #0f172a;
+  --plot-edge: rgba(71, 85, 105, 0.18);
+  --plot-edge-hot: rgba(2, 132, 199, 0.65);
+  --plot-node-line: rgba(255, 255, 255, 0.7);
+  --plot-node-selected: #0f172a;
+  --dot-dim: rgba(100, 116, 139, 0.12);
 }
 
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
     --bg: #f8fafc;
     --bg-gradient: radial-gradient(circle at 50% -10%, rgba(14, 165, 233, 0.08) 0%, rgba(248, 250, 252, 0) 70%);
     --panel: rgba(255, 255, 255, 0.85);
@@ -33,6 +108,31 @@
     --pos: #059669;
     --neg: #e11d48;
     --consensus: #d97706;
+    --on-accent: #ffffff;
+    --brand-from: #0f172a;
+    --stat-from: #0f172a;
+    --stat-to: #334155;
+    --nav-active-text: #0c4a6e;
+    --nav-active-bg: linear-gradient(135deg, rgba(14, 165, 233, 0.14) 0%, rgba(59, 130, 246, 0.14) 100%);
+    --shadow-strong: 0 20px 45px -24px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(15, 23, 42, 0.04);
+    --shadow-md: 0 12px 30px -16px rgba(15, 23, 42, 0.18);
+    --shadow-sm: 0 4px 12px -4px rgba(15, 23, 42, 0.12);
+    --glow: rgba(2, 132, 199, 0.3);
+    --badge-theory: #7e22ce;
+    --badge-ontology: #1d4ed8;
+    --badge-graph: #047857;
+    --badge-ml: #b45309;
+    --badge-multiomics: #be185d;
+    --badge-systems: #0e7490;
+    --plot-text: #475569;
+    --plot-grid: rgba(15, 23, 42, 0.08);
+    --plot-hover-bg: #ffffff;
+    --plot-hover-text: #0f172a;
+    --plot-edge: rgba(71, 85, 105, 0.18);
+    --plot-edge-hot: rgba(2, 132, 199, 0.65);
+    --plot-node-line: rgba(255, 255, 255, 0.7);
+    --plot-node-selected: #0f172a;
+    --dot-dim: rgba(100, 116, 139, 0.12);
   }
 }
 
@@ -58,6 +158,27 @@ body {
 }
 
 /* ---- Nav ---- */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 0.25rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible {
+  color: var(--text);
+  border-color: var(--border-glow);
+}
+
 .nav {
   position: sticky;
   top: 0;
@@ -95,7 +216,7 @@ body {
 }
 
 .brand span {
-  background: linear-gradient(135deg, #ffffff 0%, var(--text) 100%);
+  background: linear-gradient(135deg, var(--brand-from) 0%, var(--text) 100%);
   -webkit-background-clip: text;
   background-clip: text;
 }
@@ -128,8 +249,8 @@ body {
 }
 
 .nav-link.active {
-  color: #fff;
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.22) 0%, rgba(59, 130, 246, 0.22) 100%);
+  color: var(--nav-active-text);
+  background: var(--nav-active-bg);
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   font-weight: 600;
 }
@@ -193,7 +314,7 @@ body {
 
 .hero-copy h1 em {
   font-style: normal;
-  background: linear-gradient(135deg, #00e5ff 0%, #38bdf8 50%, #c084fc 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 50%, var(--accent-purple) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -222,20 +343,20 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  background: linear-gradient(135deg, #00e5ff 0%, #0284c7 100%);
-  color: #04131f;
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 55%, #0369a1) 100%);
+  color: var(--on-accent);
   text-decoration: none;
   font-weight: 700;
   padding: 0.7rem 1.35rem;
   border-radius: 10px;
   font-size: 0.95rem;
-  box-shadow: 0 4px 20px -4px rgba(0, 229, 255, 0.4);
+  box-shadow: 0 4px 20px -4px var(--glow);
   transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px -4px rgba(0, 229, 255, 0.6);
+  box-shadow: 0 8px 28px -4px var(--glow);
   filter: brightness(1.08);
 }
 
@@ -277,7 +398,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 20px;
   padding: 1.35rem;
-  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-strong);
   position: relative;
   overflow: hidden;
 }
@@ -333,7 +454,7 @@ body {
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: 18px;
-  box-shadow: 0 12px 36px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-md);
 }
 
 .stat {
@@ -346,7 +467,7 @@ body {
   font-size: 2rem;
   font-weight: 800;
   letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+  background: linear-gradient(135deg, var(--stat-from) 0%, var(--stat-to) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -780,7 +901,7 @@ body {
 }
 
 .plotly-wrap {
-  background: #fff;
+  background: var(--panel-solid);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0.5rem;
@@ -797,7 +918,7 @@ body {
 
 .example.on {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--accent);
 }
 
@@ -1003,7 +1124,7 @@ details.callout ul {
 
 .btn {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 8px;
   padding: 0 1rem;
@@ -2114,32 +2235,32 @@ input {
 
 .contrib-badge.theory {
   background: color-mix(in srgb, #a855f7 16%, transparent);
-  color: #c084fc;
+  color: var(--badge-theory);
 }
 
 .contrib-badge.ontology {
   background: color-mix(in srgb, #3b82f6 16%, transparent);
-  color: #60a5fa;
+  color: var(--badge-ontology);
 }
 
 .contrib-badge.graph {
   background: color-mix(in srgb, #10b981 16%, transparent);
-  color: #34d399;
+  color: var(--badge-graph);
 }
 
 .contrib-badge.ml {
   background: color-mix(in srgb, #f59e0b 16%, transparent);
-  color: #fbbf24;
+  color: var(--badge-ml);
 }
 
 .contrib-badge.multiomics {
   background: color-mix(in srgb, #ec4899 16%, transparent);
-  color: #f472b6;
+  color: var(--badge-multiomics);
 }
 
 .contrib-badge.systems {
   background: color-mix(in srgb, #06b6d4 16%, transparent);
-  color: #22d3ee;
+  color: var(--badge-systems);
 }
 
 .contrib-title {
@@ -2348,7 +2469,7 @@ input {
 .view-btn.active {
   background: var(--panel-2);
   color: var(--text);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 .organ-grid-modern {
@@ -2371,7 +2492,7 @@ input {
   color: inherit;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-md);
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -2413,7 +2534,7 @@ input {
   justify-content: center;
   font-size: 1.45rem;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-sm);
 }
 
 .organ-title-wrap {
@@ -2532,7 +2653,7 @@ input {
   flex-direction: column;
   text-decoration: none;
   color: inherit;
-  box-shadow: 0 12px 36px -16px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-md);
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, box-shadow 0.2s;
   position: relative;
   overflow: hidden;

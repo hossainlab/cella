@@ -9,6 +9,7 @@ import type {
   RelationshipGraph,
 } from "@/lib/types";
 import { categoryColor } from "@/lib/palette";
+import { cssVar, useResolvedTheme } from "@/lib/theme";
 
 export default function Page() {
   const [organ, setOrgan] = useState<string>("");
@@ -52,12 +53,13 @@ export default function Page() {
       <details className="callout">
         <summary>How this graph is built</summary>
         <p className="note muted">
-          v1 uses the documented <b>similarity-graph approximation</b>: edges are
-          the cosine similarity between cell types&apos; classifier-weight vectors
-          (not the CellTypist v2.0 predictive-clustering tree, which is future
-          work). A link means two types have <b>similar discriminative
-            fingerprints</b> — often lineage relatives. Click a node to see its
-          nearest relatives; click a relative to see the genes they share.
+          v1 uses the documented <b>similarity-graph approximation</b>: edges
+          are the cosine similarity between cell types&apos; classifier-weight
+          vectors (not the CellTypist v2.0 predictive-clustering tree, which is
+          future work). A link means two types have{" "}
+          <b>similar discriminative fingerprints</b> — often lineage relatives.
+          Click a node to see its nearest relatives; click a relative to see the
+          genes they share.
         </p>
       </details>
 
@@ -100,7 +102,9 @@ export default function Page() {
       <div className="graph-split">
         <div className="graph-canvas-wrap">
           {loading && (
-            <div className="detail-placeholder">Loading relationship graph…</div>
+            <div className="detail-placeholder">
+              Loading relationship graph…
+            </div>
           )}
           {graph && (
             <>
@@ -156,6 +160,7 @@ function GraphCanvas({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const plotlyRef = useRef<PlotlyModule["default"] | null>(null);
+  const theme = useResolvedTheme();
   const nodeById = useMemo(
     () => new Map(graph.nodes.map((n) => [n.cl_id, n])),
     [graph],
@@ -163,7 +168,7 @@ function GraphCanvas({
 
   // Latest node map + select callback, read by the single persistent click
   // listener so it never needs re-attaching across redraws.
-  const clickRef = useRef<(clId: string) => void>(() => { });
+  const clickRef = useRef<(clId: string) => void>(() => {});
   clickRef.current = (clId: string) => {
     const n = nodeById.get(clId);
     if (n) onSelect(n);
@@ -211,7 +216,7 @@ function GraphCanvas({
         y: ey,
         mode: "lines",
         type: "scattergl",
-        line: { color: "rgba(130,140,160,0.18)", width: 1 },
+        line: { color: cssVar("--plot-edge"), width: 1 },
         hoverinfo: "none",
         showlegend: false,
       };
@@ -220,7 +225,7 @@ function GraphCanvas({
         y: hy,
         mode: "lines",
         type: "scattergl",
-        line: { color: "rgba(110,168,254,0.55)", width: 1.5 },
+        line: { color: cssVar("--plot-edge-hot"), width: 1.5 },
         hoverinfo: "none",
         showlegend: false,
       };
@@ -249,7 +254,9 @@ function GraphCanvas({
               }),
               line: {
                 color: ns.map((n) =>
-                  n.cl_id === selId ? "#fff" : "rgba(0,0,0,0.35)",
+                  n.cl_id === selId
+                    ? cssVar("--plot-node-selected")
+                    : cssVar("--plot-node-line"),
                 ),
                 width: ns.map((n) => (n.cl_id === selId ? 2.5 : 0.5)),
               },
@@ -266,11 +273,14 @@ function GraphCanvas({
         yaxis: { visible: false, scaleanchor: "x", fixedrange: false },
         showlegend: true,
         legend: {
-          font: { size: 10, color: "#9aa3b2" },
+          font: { size: 10, color: cssVar("--plot-text") },
           bgcolor: "rgba(0,0,0,0)",
           orientation: "v",
         },
-        hoverlabel: { bgcolor: "#1e222b", font: { color: "#e6e8ec" } },
+        hoverlabel: {
+          bgcolor: cssVar("--plot-hover-bg"),
+          font: { color: cssVar("--plot-hover-text") },
+        },
         dragmode: "pan",
       };
 
@@ -285,7 +295,10 @@ function GraphCanvas({
       // Plotly.react drops user handlers on redraw, so re-bind after every draw.
       // The handler reads clickRef, so it always sees the latest state.
       const el = ref.current as unknown as {
-        on: (ev: string, cb: (d: { points?: { customdata?: string }[] }) => void) => void;
+        on: (
+          ev: string,
+          cb: (d: { points?: { customdata?: string }[] }) => void,
+        ) => void;
         removeAllListeners?: (ev: string) => void;
       };
       el.removeAllListeners?.("plotly_click");
@@ -297,7 +310,7 @@ function GraphCanvas({
     return () => {
       cancelled = true;
     };
-  }, [graph, organColor, selected, search, nodeById]);
+  }, [graph, organColor, selected, search, nodeById, theme]);
 
   useEffect(() => {
     const el = ref.current;
@@ -369,7 +382,8 @@ function NodePanel({
       </div>
       <p className="muted note">
         {node.primary_organ} · in {node.n_organs} organ
-        {node.n_organs > 1 ? "s" : ""} · {node.total_cells.toLocaleString()} cells
+        {node.n_organs > 1 ? "s" : ""} · {node.total_cells.toLocaleString()}{" "}
+        cells
       </p>
 
       <h4 className="section-label">
@@ -377,7 +391,9 @@ function NodePanel({
       </h4>
       <div className="neighbor-list">
         {neighbors.length === 0 && (
-          <p className="muted note">No links above the current similarity floor.</p>
+          <p className="muted note">
+            No links above the current similarity floor.
+          </p>
         )}
         {neighbors.map(({ node: nb, sim }) => (
           <div key={nb.cl_id} className="neighbor">
@@ -387,7 +403,9 @@ function NodePanel({
             >
               <span
                 className="node-dot sm"
-                style={{ background: organColor.get(nb.primary_organ) ?? "#888" }}
+                style={{
+                  background: organColor.get(nb.primary_organ) ?? "#888",
+                }}
               />
               <span className="neighbor-label">{nb.label}</span>
               <span className="sim-badge">{sim.toFixed(2)}</span>

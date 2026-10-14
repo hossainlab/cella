@@ -12,6 +12,7 @@ declare module "plotly.js-dist-min" {
       layout?: unknown,
       config?: unknown,
     ) => Promise<void>;
+    relayout: (el: HTMLElement, update: unknown) => Promise<void>;
     purge: (el: HTMLElement) => void;
     Plots: { resize: (el: HTMLElement) => void };
   };
