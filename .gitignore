@@ -18,6 +18,8 @@ build/
 # Large data artifacts (>30 GB raw and h5ad matrices are ignored)
 /data/raw/*
 /data/counts_data/*
+# Third-party benchmark inputs, re-downloaded by scripts/lookup_benchmark.py
+/data/external/
 !/data/raw/.gitkeep
 *.log
 
