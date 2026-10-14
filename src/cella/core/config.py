@@ -28,6 +28,10 @@ ORGANS: tuple[str, ...] = (
 )
 
 
+# obs column holding the curated labels the CellTypist models were trained on.
+MODEL_LABEL_COL = "Curated_annotation"
+
+
 class Settings(BaseSettings):
     """Runtime configuration. Prefix env vars with ``CELLA_``."""
 

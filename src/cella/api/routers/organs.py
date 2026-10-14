@@ -22,6 +22,7 @@ from cella.api.schemas import (
     StackedComposition,
     TFActivityRow,
 )
+from cella.core.config import MODEL_LABEL_COL
 
 router = APIRouter(prefix="/organs", tags=["organ-browser"])
 
@@ -100,16 +101,32 @@ def get_organ(slug: str) -> OrganDetail:
 @router.get("/{slug}/composition-by", response_model=StackedComposition)
 def composition_by(slug: str, group: str = "Dataset") -> StackedComposition:
     """Cell-type proportions within each group (e.g. dataset) for a stacked bar."""
-    from cella.pipeline.extract import MODEL_LABEL_COL
-
-    obs = data.obs(slug)
-    if group not in obs.columns:
-        raise HTTPException(status_code=400, detail=f"unknown group column: {group}")
-    tab = (
-        obs.groupby([group, MODEL_LABEL_COL], observed=True)
-        .size()
-        .unstack(fill_value=0)
+    # Prefer the precomputed counts (data/processed is all a deployment ships);
+    # fall back to the raw obs for groups that were not precomputed.
+    comp = data.composition()
+    organ = slug.replace("_", " ")
+    rows = (
+        comp[(comp["organ"] == organ) & (comp["group"] == group)]
+        if comp is not None
+        else None
     )
+    if rows is not None and not rows.empty:
+        tab = rows.pivot(index="group_rank", columns="label_rank", values="n_cells")
+        tab.index = rows.drop_duplicates("group_rank").set_index("group_rank").loc[
+            tab.index, "group_value"
+        ]
+        tab.columns = rows.drop_duplicates("label_rank").set_index("label_rank").loc[
+            tab.columns, "curated_label"
+        ]
+    else:
+        obs = data.obs(slug)
+        if group not in obs.columns:
+            raise HTTPException(status_code=400, detail=f"unknown group column: {group}")
+        tab = (
+            obs.groupby([group, MODEL_LABEL_COL], observed=True)
+            .size()
+            .unstack(fill_value=0)
+        )
     frac = tab.div(tab.sum(axis=1), axis=0).fillna(0.0)
     return StackedComposition(
         group_by=group,

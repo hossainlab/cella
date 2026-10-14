@@ -70,7 +70,10 @@ class _Writer:
         from cella.api.main import app
 
         self.out = out
-        self.client = TestClient(app)
+        # Report handler errors as 500s instead of raising, so an optional
+        # endpoint with missing inputs is skipped and a required one fails with
+        # its URL in the message.
+        self.client = TestClient(app, raise_server_exceptions=False)
         self.n_files = 0
         self.n_bytes = 0
         self.skipped: list[str] = []

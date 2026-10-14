@@ -105,8 +105,9 @@ def edge_detail(
 
     src_w, tgt_w = _top_positive(source_id), _top_positive(target_id)
     shared = set(src_w) & set(tgt_w)
-    # Rank shared genes by the weaker of the two weights (strong in *both* types).
-    ranked = sorted(shared, key=lambda g: min(src_w[g], tgt_w[g]), reverse=True)[:top_n]
+    # Rank shared genes by the weaker of the two weights (strong in *both* types);
+    # ties break on the gene name so the order does not depend on set iteration.
+    ranked = sorted(shared, key=lambda g: (-min(src_w[g], tgt_w[g]), g))[:top_n]
 
     return EdgeDetail(
         source=_node(src_row),

@@ -62,6 +62,13 @@ def graph_edges() -> pd.DataFrame:
 
 
 @lru_cache(maxsize=1)
+def composition() -> pd.DataFrame | None:
+    """Precomputed cell counts by obs group per organ, or None if not emitted."""
+    path = settings.processed_dir / "composition.parquet"
+    return pd.read_parquet(path) if path.exists() else None
+
+
+@lru_cache(maxsize=1)
 def cl_relatives() -> dict[str, frozenset[str]]:
     """Close ontology relatives per CL term; empty if the artifact predates it."""
     path = settings.processed_dir / "cl_relatives.parquet"

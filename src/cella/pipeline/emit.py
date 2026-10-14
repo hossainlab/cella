@@ -5,6 +5,7 @@ Write the query-ready artifacts the online app serves, into
 
     registry.parquet          canonical cross-organ cell types (CELL_TYPE, ~145)
     cl_relatives.parquet      close ontology relatives among the registry terms
+    composition.parquet       per-organ cell counts by obs group (dataset, donor, ...)
     cell_type_organ.parquet   per (organ, curated type) counts + CL id (~399)
     weights/<Organ>.parquet    full classifier.coef_ (cell_type x gene) per organ
     markers.parquet            top-N discriminative genes per (organ, cell type),
@@ -55,6 +56,50 @@ def emit_organ_summary() -> pd.DataFrame:
         rows.append(row)
     df = pd.DataFrame(rows)
     df.to_parquet(out / "organs.parquet")
+    return df
+
+
+# obs columns the Organ Browser can stack cell-type composition by.
+COMPOSITION_GROUPS = (
+    "Dataset",
+    "donor_id",
+    "assay",
+    "sex",
+    "suspension_type",
+    "disease",
+    "development_stage",
+)
+
+
+def emit_composition() -> pd.DataFrame:
+    """Cell counts per (organ, obs group, curated label), so the API needs no raw obs.
+
+    ``group_rank`` / ``label_rank`` keep the order a groupby over the raw obs
+    produces (categorical columns follow category order, not alphabetical), so
+    the composition endpoint returns the same response with or without the obs.
+    """
+    from cella.pipeline.extract import MODEL_LABEL_COL
+
+    frames: list[pd.DataFrame] = []
+    for organ in ORGANS:
+        obs = load_obs(organ)
+        for group in COMPOSITION_GROUPS:
+            if group not in obs.columns:
+                continue
+            tab = obs.groupby([group, MODEL_LABEL_COL], observed=True).size().unstack(fill_value=0)
+            long = tab.stack().rename("n_cells").reset_index()
+            long.columns = ["group_value", "curated_label", "n_cells"]
+            group_rank = {g: i for i, g in enumerate(tab.index)}
+            label_rank = {c: i for i, c in enumerate(tab.columns)}
+            long["group_rank"] = long["group_value"].map(group_rank)
+            long["label_rank"] = long["curated_label"].map(label_rank)
+            long["group_value"] = long["group_value"].astype(str)
+            long["curated_label"] = long["curated_label"].astype(str)
+            long.insert(0, "group", group)
+            long.insert(0, "organ", organ)
+            frames.append(long)
+    df = pd.concat(frames, ignore_index=True)
+    df.to_parquet(settings.processed_dir / "composition.parquet", index=False)
     return df
 
 
@@ -150,6 +195,7 @@ def emit_all(top_n: int = 25, min_pct: float = 0.1) -> None:
     """Emit every artifact. Idempotent; overwrites in place."""
     registry, long = emit_metadata()
     markers = emit_weights_and_markers(top_n=top_n, min_pct=min_pct)
+    emit_composition()
     print(
         f"emitted: registry={len(registry)} nodes, "
         f"cell_type_organ={len(long)} rows, markers={len(markers)} rows "

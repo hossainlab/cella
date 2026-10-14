@@ -18,6 +18,7 @@ from dataclasses import dataclass
 import celltypist
 import pandas as pd
 
+from cella.core.config import MODEL_LABEL_COL  # noqa: F401 - re-exported
 from cella.pipeline.acquire import cache_obs_one, model_path, obs_path
 from cella.pipeline.ontology import map_labels
 
@@ -49,10 +50,9 @@ def load_obs(organ: str) -> pd.DataFrame:
     return pd.read_parquet(path)
 
 
-# The model's cell_types match obs["Curated_annotation"] exactly (49/49 for Lung),
-# so that is the join key. obs["cell_type"] is the coarser Cell Ontology label
+# The model's cell_types match obs[MODEL_LABEL_COL] ("Curated_annotation") exactly
+# (49/49 for Lung), so that is the join key. obs["cell_type"] is the coarser Cell Ontology label
 # (many curated types -> one CL term) and is kept as the harmonization bridge.
-MODEL_LABEL_COL = "Curated_annotation"
 ONTOLOGY_LABEL_COL = "cell_type"
 
 
