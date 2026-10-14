@@ -1,7 +1,8 @@
 """Figure for the cross-organ invariance analysis.
 
-Panel A: every multi-organ, specifically-annotated cell type ranked by its mean
-cross-organ cosine, against the mismatched-cell-type null band.
+Panel A: every multi-organ, specifically-annotated cell type ranked by its
+calibrated invariance - mean cross-organ cosine minus each organ pair's own
+mismatched-cell-type null - so 0 is chance for that pair of organs.
 Panel B: the same scores grouped by broad lineage.
 
 Run after scripts/invariance_analysis.py:
@@ -18,6 +19,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.stats import mannwhitneyu
+
+from cella.analysis.invariance import calibrate_pairs
 
 PROCESSED = Path("data/processed")
 OUT = Path("docs/images/cella_invariance.png")
@@ -38,11 +41,14 @@ RESIDENT = ["Epithelial", "Endothelial", "Mesenchymal/Stromal"]
 def main() -> None:
     scores = pd.read_parquet(PROCESSED / "invariance_scores.parquet")
     pairs = pd.read_parquet(PROCESSED / "invariance_pairs.parquet")
-    null = pairs.loc[~pairs["matched"], "cosine"]
-    null_mu, null_sd = null.mean(), null.std()
+    # Calibrated scores sit on "excess over the pair's null", so chance is 0 and
+    # the band is the typical spread of a per-organ-pair null.
+    null_mu = 0.0
+    null_sd = calibrate_pairs(pairs)["null_sd"].mean()
+    col = "invariance_calibrated"
 
-    specific = scores[scores["tier"] == "specific"].sort_values("invariance")
-    resolved = scores[scores["tier"] == "granularity-resolved"].sort_values("invariance")
+    specific = scores[scores["tier"] == "specific"].sort_values(col)
+    resolved = scores[scores["tier"] == "granularity-resolved"].sort_values(col)
 
     fig, (ax_a, ax_b) = plt.subplots(
         1, 2, figsize=(15, 9), gridspec_kw={"width_ratios": [2.3, 1]}
@@ -57,18 +63,21 @@ def main() -> None:
         color="#cccccc",
         alpha=0.55,
         zorder=0,
-        label="null ±1 SD (mismatched cell types)",
+        label="null ±1 SD (mismatched cell types, per organ pair)",
     )
     ax_a.axvline(null_mu, color="#555555", ls="--", lw=1.2, zorder=1, label="null mean")
-    ax_a.hlines(y, null_mu, specific["invariance"], color=colors, lw=2.2, zorder=2)
-    ax_a.scatter(specific["invariance"], y, c=colors, s=70, zorder=3, edgecolor="white")
+    ax_a.hlines(y, null_mu, specific[col], color=colors, lw=2.2, zorder=2)
+    ax_a.scatter(specific[col], y, c=colors, s=70, zorder=3, edgecolor="white")
     labels = [
         f"{lab}  ({n})"
         for lab, n in zip(specific["ontology_label"], specific["n_organs"], strict=True)
     ]
     ax_a.set_yticks(list(y))
     ax_a.set_yticklabels(labels, fontsize=9)
-    ax_a.set_xlabel("Mean cross-organ cosine of discriminative weights", fontsize=11)
+    ax_a.set_xlabel(
+        "Cross-organ cosine of discriminative weights, above the organ pair's null",
+        fontsize=11,
+    )
     ax_a.set_title(
         "A  Organ-invariance of discriminative cell-type identity\n"
         f"{len(specific)} specifically annotated cell types in ≥2 organs "
@@ -83,8 +92,8 @@ def main() -> None:
     # --- Panel B: by lineage ---------------------------------------------------
     # ascending: matplotlib draws the first group at the bottom, so the most
     # invariant lineage ends up on top, matching panel A.
-    order = specific.groupby("lineage")["invariance"].median().sort_values().index
-    data = [specific.loc[specific["lineage"] == lin, "invariance"].to_numpy() for lin in order]
+    order = specific.groupby("lineage")[col].median().sort_values().index
+    data = [specific.loc[specific["lineage"] == lin, col].to_numpy() for lin in order]
     box = ax_b.boxplot(
         data, vert=False, widths=0.6, patch_artist=True, showfliers=False, zorder=2
     )
@@ -105,7 +114,7 @@ def main() -> None:
         )
         # Coarse terms rescued on their comparable organs, drawn hollow: they
         # replicate the direction but stay confounded (see stability analysis).
-        extra = resolved.loc[resolved["lineage"] == lin, "invariance"].to_numpy()
+        extra = resolved.loc[resolved["lineage"] == lin, col].to_numpy()
         if len(extra):
             ax_b.scatter(
                 extra,
@@ -121,19 +130,23 @@ def main() -> None:
     ax_b.set_yticklabels(
         [f"{lin}  (n={len(d)})" for lin, d in zip(order, data, strict=True)], fontsize=9
     )
-    ax_b.set_xlabel("Mean cross-organ cosine", fontsize=11)
+    ax_b.set_xlabel("Cosine above the organ pair's null", fontsize=11)
 
-    circ = specific.loc[specific["lineage"].isin(CIRCULATING), "invariance"]
-    res = specific.loc[specific["lineage"].isin(RESIDENT), "invariance"]
-    _, pval = mannwhitneyu(circ, res, alternative="greater")
+    def lineage_test(frame: pd.DataFrame, score: str) -> tuple[int, int, float]:
+        circ = frame.loc[frame["lineage"].isin(CIRCULATING), score].dropna()
+        res = frame.loc[frame["lineage"].isin(RESIDENT), score].dropna()
+        return len(circ), len(res), mannwhitneyu(circ, res, alternative="greater").pvalue
+
+    n_circ, n_res, pval = lineage_test(specific, col)
+    n_circ_p, n_res_p, pval_p = lineage_test(specific, "invariance_peripheral")
     ax_b.set_title(
         "B  Grouped by lineage\n"
-        f"circulating (n={len(circ)}) > tissue-resident (n={len(res)}), "
-        f"one-sided Mann–Whitney p = {pval:.1e}",
+        f"circulating (n={n_circ}) > tissue-resident (n={n_res}), "
+        f"one-sided Mann–Whitney p = {pval:.1e}\n"
+        f"peripheral-organ pairs only (n={n_circ_p} vs {n_res_p}): p = {pval_p:.1e}",
         fontsize=12,
         loc="left",
     )
-    ax_b.legend(fontsize=8, loc="lower right", framealpha=0.95)
     ax_b.legend(fontsize=8, loc="lower right", framealpha=0.95)
     ax_b.grid(axis="x", alpha=0.25)
     ax_b.set_axisbelow(True)

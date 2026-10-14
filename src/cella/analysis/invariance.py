@@ -17,7 +17,12 @@ Method
 
 The score is calibrated against a label-shuffled null: cosines between a cell
 type in one organ and a *different* cell type in another organ, computed over
-the same pairwise gene spaces.
+the same pairwise gene spaces. The null is taken **per organ pair**
+(:func:`calibrate_pairs`): organs with similar cell-type compositions, such as
+blood, bone marrow, spleen and lymph node, share more discriminative structure
+between *any* two of their cell types (mismatched mean 0.18 for lymphoid-organ
+pairs vs 0.12 for peripheral pairs), so one global null would credit cell types
+compared across those organs with invariance they do not have.
 """
 
 from __future__ import annotations
@@ -141,17 +146,64 @@ def pair_cosines(
     return frame, len(slice_a)
 
 
+def calibrate_pairs(pairs: pd.DataFrame) -> pd.DataFrame:
+    """Matched rows of ``pairs`` with their organ pair's null and calibrated cosine.
+
+    For each organ pair the null is the mismatched cosines of that pair alone.
+    Adds ``null_mean`` / ``null_sd`` (the pair's null), ``excess`` (cosine minus
+    the pair's null mean, in cosine units) and ``z_pair``.
+    """
+    keys = ["organ_a", "organ_b"]
+    null = (
+        pairs.loc[~pairs["matched"]]
+        .groupby(keys)["cosine"]
+        .agg(null_mean="mean", null_sd="std")
+        .reset_index()
+    )
+    signal = pairs.loc[pairs["matched"]].merge(null, on=keys, how="left")
+    signal["excess"] = signal["cosine"] - signal["null_mean"]
+    signal["z_pair"] = signal["excess"] / signal["null_sd"]
+    return signal
+
+
+def pct_vectors(
+    models: dict[str, OrganModel], cell_type_organ: pd.DataFrame, processed: Path = PROCESSED
+) -> dict[tuple[str, str], np.ndarray]:
+    """``(organ, cl_id) -> fraction of cells expressing each gene`` in the model's gene space.
+
+    Mirrors :func:`cell_type_vectors`: curated labels sharing a CL term are
+    averaged by cell count. Genes missing from the pseudobulk get 0.
+    """
+    out: dict[tuple[str, str], np.ndarray] = {}
+    for organ, rows_o in cell_type_organ.groupby("organ", sort=False):
+        path = processed / "expression" / f"{organ.replace(' ', '_')}__pct.parquet"
+        pct = pd.read_parquet(path)
+        pct.columns = [str(c).split("_ENSG")[0] for c in pct.columns]
+        pct = pct.loc[:, ~pct.columns.duplicated()]
+        pct = pct.reindex(columns=models[organ].genes.astype(str)).fillna(0.0)
+        for cl_id, rows in rows_o.groupby("cl_id", sort=False):
+            weights = rows["cell_count"].to_numpy(dtype=np.float64)
+            weights = weights / weights.sum()
+            out[(organ, cl_id)] = weights @ pct.loc[rows["curated_label"]].to_numpy()
+    return out
+
+
 def core_fraction(
     models: dict[str, OrganModel],
     vectors: dict[tuple[str, str], np.ndarray],
     cl_id: str,
     organs: list[str],
     top_k: int = 50,
+    pct: dict[tuple[str, str], np.ndarray] | None = None,
+    min_pct: float = 0.1,
 ) -> tuple[float, list[str]]:
     """Fraction of a cell type's top-``k`` positive genes shared by every organ.
 
     Each organ's top-``k`` is taken within the genes common to all the listed
-    organs, so the sets are directly comparable.
+    organs, so the sets are directly comparable. With ``pct``, only genes
+    expressed in at least ``min_pct`` of the cell type's cells in that organ are
+    eligible - the same prevalence gate as the marker table, which keeps rarely
+    detected genes with inflated coefficients out of the core.
     """
     common = set.intersection(*[set(models[o].genes.astype(str)) for o in organs])
     top_sets: list[set[str]] = []
@@ -159,9 +211,11 @@ def core_fraction(
         model = models[organ]
         idx = np.array([model.gene_index[g] for g in common])
         names = model.genes.astype(str)[idx]
-        coefs = vectors[(organ, cl_id)][idx]
+        coefs = vectors[(organ, cl_id)][idx].copy()
+        if pct is not None:
+            coefs[pct[(organ, cl_id)][idx] < min_pct] = -np.inf
         order = np.argsort(-coefs)[:top_k]
-        top_sets.append(set(names[order]))
+        top_sets.append(set(names[order][np.isfinite(coefs[order])]))
     core = set.intersection(*top_sets)
     return len(core) / top_k, sorted(core)
 
