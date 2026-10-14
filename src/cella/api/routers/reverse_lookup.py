@@ -1,8 +1,14 @@
 """Reverse lookup — "paste your markers, which cell type do they define?".
 
-The inverse of the Marker Atlas: given a gene signature, score it against every
-organ model's discriminative weight matrix and return the best-matching cell
-types. A weak best score flags a possible novel / uncharacterized state.
+The inverse of the Marker Atlas: given a gene signature, rank every atlas cell
+type by the mean fraction of its cells that express the query genes. A weak or
+ambiguous best match flags a possible novel / uncharacterized state.
+
+Scoring by expression rather than by classifier weight is a benchmarked choice
+(``scripts/lookup_benchmark.py``): on external marker sets held out from method
+selection (Tabula Sapiens, Azimuth, PanglaoDB), mean fraction-expressing ranks
+the right cell type first for 40% of queries vs 17% for mean classifier weight.
+Weights stay in each hit as evidence of which query genes are discriminative.
 See docs/CONCEPT.md §11 (v1.1 candidate).
 """
 
@@ -19,8 +25,12 @@ from cella.core.config import ORGANS
 
 router = APIRouter(prefix="/reverse-lookup", tags=["reverse-lookup"])
 
-# A mean discriminative weight below this is treated as "no real match".
-_MIN_SCORE = 0.10
+# Confidence rule, calibrated on the benchmark's dev library (CellMarker) only:
+# the top hit must be expressed (mean fraction >= _MIN_SCORE) and lead the best
+# hit of any *other* cell type by >= _MIN_MARGIN of its score. On held-out
+# libraries this splits top-1 precision 0.62 (confident) vs 0.33 (not).
+_MIN_SCORE = 0.30
+_MIN_MARGIN = 0.10
 _MAX_GENES = 200
 
 
@@ -64,32 +74,43 @@ def reverse_lookup(
     hits: list[SignatureHit] = []
 
     for org in organs:
-        try:
-            w = data.weights(_slug(org))
-        except ArtifactsNotBuilt:
+        pct = data.pct_by_symbol(_slug(org))
+        if pct is None:
             continue
-        # Case-insensitive column match: uppercased gene -> real column name.
-        col_by_upper = {c.upper(): c for c in w.columns}
-        present = [col_by_upper[g] for g in query if g in col_by_upper]
+        present = [g for g in query if g in pct.columns]
         if not present:
             continue
-        matched.update(g for g in query if g in col_by_upper)
+        matched.update(present)
+        try:
+            w = data.weights(_slug(org))
+            coef_by_upper = {c.upper(): c for c in w.columns}
+        except ArtifactsNotBuilt:
+            w, coef_by_upper = None, {}
 
-        sub = w[present]  # cell types x matched genes
-        scores = sub.mean(axis=1)  # mean discriminative weight per cell type
+        sub = pct[present]  # cell types x matched genes
+        scores = sub.mean(axis=1)  # mean fraction of cells expressing the query
         for curated_label, score in scores.items():
-            row = sub.loc[curated_label]
-            top = row.sort_values(ascending=False).head(5)
-            cl_id, onto = label_map.get((org, str(curated_label)), (None, str(curated_label)))
+            label = str(curated_label)
+            top = sub.loc[curated_label].sort_values(ascending=False).head(5)
+            genes = []
+            for g, frac in top.items():
+                col = coef_by_upper.get(g)
+                coef = (
+                    float(w.at[curated_label, col])
+                    if w is not None and col is not None and curated_label in w.index
+                    else None
+                )
+                genes.append(SignatureGene(gene=str(g), pct=float(frac), coef=coef))
+            cl_id, onto = label_map.get((org, label), (None, label))
             hits.append(
                 SignatureHit(
                     cl_id=cl_id,
                     ontology_label=onto,
-                    curated_label=str(curated_label),
+                    curated_label=label,
                     organ=org,
                     score=float(score),
                     n_matched=len(present),
-                    top_genes=[SignatureGene(gene=str(g), coef=float(c)) for g, c in top.items()],
+                    top_genes=genes,
                 )
             )
 
@@ -100,24 +121,34 @@ def reverse_lookup(
             unknown_genes=query,
             hits=[],
             is_confident=False,
-            note="None of these genes are in the organ models' vocabularies.",
+            note="None of these genes are in the atlas gene vocabulary.",
         )
 
     hits.sort(key=lambda h: h.score, reverse=True)
     top_hits = hits[:limit]
     best = top_hits[0]
-    is_confident = best.score >= _MIN_SCORE and best.n_matched >= min(2, len(matched))
+    # The same cell type in another organ is not a competing answer.
+    best_key = best.cl_id or best.ontology_label
+    runner_up = next((h.score for h in hits if (h.cl_id or h.ontology_label) != best_key), 0.0)
+    margin = (best.score - runner_up) / best.score if best.score > 0 else 0.0
+    is_confident = (
+        best.score >= _MIN_SCORE
+        and margin >= _MIN_MARGIN
+        and best.n_matched >= min(2, len(matched))
+    )
     unknown = [g for g in query if g not in matched]
 
     if is_confident:
         note = (
             f"Best match: {best.ontology_label} in {best.organ} "
-            f"(mean weight {best.score:.2f} over {best.n_matched} of {len(query)} genes)."
+            f"({best.score:.0%} of its cells express the query genes on average, "
+            f"{best.n_matched} of {len(query)} genes recognized; "
+            f"{margin:.0%} ahead of the next cell type)."
         )
     else:
         note = (
-            "No strong match — these genes do not collectively define any single "
-            "cell type in the atlas. Could be a mixed, rare, or novel state, or too "
+            "No clear match — no single cell type expresses these genes markedly "
+            "more than the others. Could be a mixed, rare, or novel state, or too "
             "few genes recognized."
         )
 

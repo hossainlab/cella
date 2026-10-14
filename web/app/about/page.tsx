@@ -98,7 +98,7 @@ export default function AboutPage() {
               <tr>
                 <td><strong>Reverse Querying</strong></td>
                 <td>Basic gene search across expression tables</td>
-                <td>Zero-shot signature scoring against multi-organ ML weight vectors</td>
+                <td>Benchmarked signature ranking across 12 organs, with discriminative weights as evidence</td>
               </tr>
               <tr>
                 <td><strong>Cross-Tissue Relationships</strong></td>
@@ -180,12 +180,13 @@ export default function AboutPage() {
               <h3 className="contrib-title">Instant Reverse-Lookup Signature Classifier</h3>
             </div>
             <p className="contrib-desc">
-              Designed a fast reverse-lookup engine that projects user-provided gene signatures
-              against 12 organ model weight matrices in sub-milliseconds (&lt; 2 ms). It provides:
+              A reverse-lookup engine that ranks every cell type across 12 organs by how widely it
+              expresses a user-provided gene signature, chosen by benchmarking scoring rules against
+              external marker sets. It provides:
             </p>
             <ul className="contrib-list">
-              <li>Quantitative confidence scoring based on discriminative weight strength.</li>
-              <li>Deconvolution of which organ/tissue best matches the query signature.</li>
+              <li>A confidence call calibrated on held-out marker sets (expression level plus lead over the next cell type).</li>
+              <li>The organ in which each candidate cell type matches best, with per-gene discriminative weights.</li>
               <li>Automated flagging of potential novel, rare, or uncharacterized cellular states.</li>
             </ul>
           </div>

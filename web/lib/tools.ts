@@ -38,7 +38,7 @@ export const TOOLS: Tool[] = [
     status: "live",
     question: "My markers — which cell type is this?",
     blurb:
-      "Paste a gene signature; Cella ranks the cell types it most defines across 12 organs, and flags novel states.",
+      "Paste a gene signature; Cella ranks the cell types that express it across 12 organs, and flags ambiguous or novel states.",
   },
   {
     slug: "fingerprint",

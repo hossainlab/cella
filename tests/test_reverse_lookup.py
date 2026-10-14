@@ -70,3 +70,18 @@ def test_limit_caps_results(client: TestClient) -> None:
         "/reverse-lookup", params={"genes": "CD3D,CD8A", "limit": 3}
     ).json()
     assert len(body["hits"]) <= 3
+
+
+def test_housekeeping_signature_not_confident(client: TestClient) -> None:
+    # Expressed everywhere, so no cell type leads the others: must not be a match.
+    body = client.get("/reverse-lookup", params={"genes": "ACTB,GAPDH,EEF1A1,TPT1"}).json()
+    assert body["hits"]
+    assert body["is_confident"] is False
+
+
+def test_hit_genes_carry_expression_and_weight(client: TestClient) -> None:
+    body = client.get("/reverse-lookup", params={"genes": "SFTPC,SFTPB,NAPSA"}).json()
+    top = body["hits"][0]
+    assert top["ontology_label"] == "type II pneumocyte"
+    assert all(0.0 <= g["pct"] <= 1.0 for g in top["top_genes"])
+    assert any(g["coef"] is not None for g in top["top_genes"])

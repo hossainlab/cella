@@ -79,10 +79,26 @@ def obs(slug: str) -> pd.DataFrame:
     return pd.read_parquet(path)
 
 
+@lru_cache(maxsize=32)
 def expression(slug: str, kind: str) -> pd.DataFrame | None:
     """Pseudobulk matrix (kind='mean' or 'pct') for one organ, or None if not derived."""
     path = settings.processed_dir / "expression" / f"{slug}__{kind}.parquet"
     return pd.read_parquet(path) if path.exists() else None
+
+
+@lru_cache(maxsize=16)
+def pct_by_symbol(slug: str) -> pd.DataFrame | None:
+    """Fraction-expressing matrix with upper-cased gene-symbol columns.
+
+    Features stored as ``SYMBOL_ENSG...`` (symbols shared by several Ensembl ids)
+    collapse to their symbol, keeping the first occurrence.
+    """
+    pct = expression(slug, "pct")
+    if pct is None:
+        return None
+    out = pct.copy()
+    out.columns = [str(c).split("_ENSG")[0].upper() for c in out.columns]
+    return out.loc[:, ~out.columns.duplicated()]
 
 
 @lru_cache(maxsize=16)

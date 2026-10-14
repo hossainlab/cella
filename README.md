@@ -46,7 +46,7 @@ When machine learning models (such as CellTypist’s regularized logistic regres
 | **Primary Data Asset** | Raw / normalized expression matrices ($X$) | Learned discriminative weight matrices ($W$) + Cell Ontology graph |
 | **Marker Identification** | Heuristic differential expression or curated lists | Regularized logistic regression classifier coefficients |
 | **Cross-Organ Comparison** | Manual inspection of disjoint datasets | Automated split into *Universal Core* vs. *Tissue-Adapted* markers |
-| **Reverse Querying** | Basic gene lookup across tables | Zero-shot signature scoring against multi-organ ML weight vectors in $<2\text{ ms}$ |
+| **Reverse Querying** | Basic gene lookup across tables | Benchmarked signature ranking across 12 organs, with discriminative weights as evidence |
 | **Cross-Tissue Lineages** | Single-tissue 2D UMAPs or static dendrograms | Interactive 145-node cross-organ cosine-similarity relationship graph |
 | **Multi-Omics Context** | Raw gene counts only | Transcription factor activity (CollecTRI/ULM), GSEA pathways, and cell interactomes (LIANA) |
 
@@ -80,7 +80,7 @@ Side-by-side heatmaps of signed positive/negative classifier weights across orga
 </p>
 
 ### 4. ⚡ Reverse Lookup (`/reverse-lookup`)
-Paste experimental gene signatures to score them against all organ models, identify candidate cell types, and detect novel/uncharacterized states in $<2\text{ ms}$.
+Paste experimental gene signatures to rank candidate cell types across all 12 organs by how widely they express them, with each gene's discriminative weight as evidence, and flag ambiguous or novel states.
 
 <p align="center">
   <img src="docs/images/cella_reverse_lookup.png" alt="Reverse-Lookup Signature Classifier" width="100%" />

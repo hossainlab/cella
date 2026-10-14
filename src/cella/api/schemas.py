@@ -168,7 +168,8 @@ class GeneAcrossOrgans(BaseModel):
 
 class SignatureGene(BaseModel):
     gene: str
-    coef: float  # this cell type's discriminative weight for the gene, in this organ
+    pct: float  # fraction of this cell type's cells expressing the gene, in this organ
+    coef: float | None  # discriminative weight, if the gene is in the organ's model
 
 
 class SignatureHit(BaseModel):
@@ -176,17 +177,17 @@ class SignatureHit(BaseModel):
     ontology_label: str  # harmonized label (falls back to curated label)
     curated_label: str  # the organ-specific label the model was trained on
     organ: str
-    score: float  # mean discriminative weight over the matched query genes
-    n_matched: int  # query genes present in this organ's model vocabulary
-    top_genes: list[SignatureGene]  # strongest-contributing matched genes
+    score: float  # mean fraction of cells expressing the matched query genes
+    n_matched: int  # query genes present in this organ's expression vocabulary
+    top_genes: list[SignatureGene]  # most widely expressed matched genes
 
 
 class ReverseLookup(BaseModel):
     """Which cell type does a gene signature define? (reverse of the Marker Atlas)."""
 
     query_genes: list[str]
-    matched_genes: list[str]  # query genes found in at least one organ model
-    unknown_genes: list[str]  # query genes absent from every model vocabulary
+    matched_genes: list[str]  # query genes found in at least one organ
+    unknown_genes: list[str]  # query genes absent from every organ's vocabulary
     hits: list[SignatureHit]  # best-matching (organ, cell type), strongest first
     is_confident: bool  # whether the top hit clears the match threshold
     note: str  # plain-language verdict, including the novelty caveat

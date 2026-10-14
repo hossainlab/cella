@@ -151,7 +151,8 @@ export interface GeneAcrossOrgans {
 
 export interface SignatureGene {
   gene: string;
-  coef: number;
+  pct: number; // fraction of the cell type's cells expressing the gene
+  coef: number | null; // discriminative weight, if the gene is in the organ model
 }
 
 export interface SignatureHit {

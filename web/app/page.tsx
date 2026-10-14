@@ -124,7 +124,7 @@ export default function Home() {
             <div className="home-tool-icon-wrap">⚡</div>
             <h3 className="home-tool-title">Reverse Lookup Classifier</h3>
             <p className="home-tool-desc">
-              Paste experimental gene lists to score them against all organ models in &lt;2 ms, deconvolve cell types, and detect novel states.
+              Paste experimental gene lists to rank matching cell types across all 12 organs and flag ambiguous or novel states.
             </p>
             <span className="home-tool-action">Run Query →</span>
           </Link>

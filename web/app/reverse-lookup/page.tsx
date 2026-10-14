@@ -51,19 +51,23 @@ export default function Page() {
           Reverse Lookup Classifier
         </h1>
         <p className="sub" style={{ maxWidth: "68ch", fontSize: "1.05rem" }}>
-          Paste an experimental gene signature — Cella projects it against every organ model&apos;s{" "}
-          <strong>discriminative classifier weights</strong> to rank matching cell types in sub-milliseconds.
+          Paste an experimental gene signature — Cella ranks every cell type across 12 organs by how
+          widely it <strong>expresses</strong> your genes, and shows which of them are{" "}
+          <strong>discriminative</strong> for each match.
         </p>
       </header>
 
       <details className="callout" style={{ marginBottom: "1.5rem" }}>
         <summary>How the score works</summary>
         <p className="note muted">
-          For each cell type, the score is the <b>mean classifier weight</b> of your
-          genes — how strongly they <em>distinguish</em> that type in that organ, not
-          how highly they&apos;re expressed. Genes outside an organ model&apos;s
-          vocabulary are listed as unrecognized. This asks &quot;what do these genes
-          define?&quot;, not &quot;where are they on?&quot;.
+          For each cell type, the score is the <b>mean fraction of its cells that
+          express</b> your genes. In a benchmark against external marker sets
+          (Tabula Sapiens, Azimuth, PanglaoDB), this ranked the right cell type first
+          about twice as often as averaging classifier weights, which spread credit
+          across correlated genes. Each gene&apos;s classifier weight is still shown on
+          hover. A match is called confident when the top cell type is clearly expressed
+          and leads the next different cell type by at least 10%. Genes outside the
+          atlas vocabulary are listed as unrecognized.
         </p>
       </details>
 
@@ -203,17 +207,21 @@ function HitRow({ hit, rank, max }: { hit: SignatureHit; rank: number; max: numb
         </div>
         <div className="rl-bar-track">
           <span className="rl-bar" style={{ width: `${pct}%` }} />
-          <span className="rl-score">{hit.score.toFixed(3)}</span>
+          <span className="rl-score">{Math.round(hit.score * 100)}%</span>
         </div>
         <div className="rl-contrib">
-          <span className="helper">defined by:</span>{" "}
-          {hit.top_genes
-            .filter((g) => g.coef > 0)
-            .map((g) => (
-              <span key={g.gene} className="gene-chip" title={`weight ${g.coef.toFixed(2)}`}>
-                {g.gene}
-              </span>
-            ))}
+          <span className="helper">expressed:</span>{" "}
+          {hit.top_genes.map((g) => (
+            <span
+              key={g.gene}
+              className="gene-chip"
+              title={`${Math.round(g.pct * 100)}% of cells${
+                g.coef === null ? "" : ` · weight ${g.coef.toFixed(2)}`
+              }`}
+            >
+              {g.gene} {Math.round(g.pct * 100)}%
+            </span>
+          ))}
         </div>
       </div>
     </div>
