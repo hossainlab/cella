@@ -56,3 +56,33 @@ def label_to_cl_id(label: str) -> str | None:
 def map_labels(labels: list[str]) -> dict[str, str | None]:
     """Map many ontology labels to CL ids in one call."""
     return {label: label_to_cl_id(label) for label in labels}
+
+
+def close_relatives(
+    cl_ids: list[str], max_parent_children: int = 3, max_descendants: int = 5
+) -> dict[str, set[str]]:
+    """For each term, the other terms in ``cl_ids`` that are close ontology relatives.
+
+    A parent counts only if it is specific (an ancestor of at most
+    ``max_parent_children`` terms in the set), so "leukocyte" is never a close
+    relative. Children count only if the term itself is specific (at most
+    ``max_descendants`` descendants in the set), so "cell" is close to nothing.
+    Used to tell "two subtypes of the same thing" apart from genuinely different
+    cell types, e.g. when judging whether a reverse-lookup hit is ambiguous.
+    """
+    op = _parser()
+    present = set(cl_ids)
+    ancestors: dict[str, set[str]] = {}
+    for cid in present:
+        try:
+            ancestors[cid] = set(op.get_term_ancestors(cid)) & present
+        except (KeyError, ValueError):
+            ancestors[cid] = set()
+    n_desc = {t: sum(t in ancestors[o] for o in present) for t in present}
+    out: dict[str, set[str]] = {}
+    for t in present:
+        rel = {a for a in ancestors[t] if n_desc[a] <= max_parent_children}
+        if n_desc[t] <= max_descendants:
+            rel |= {o for o in present if t in ancestors[o]}
+        out[t] = rel
+    return out

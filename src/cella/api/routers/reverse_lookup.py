@@ -27,8 +27,11 @@ router = APIRouter(prefix="/reverse-lookup", tags=["reverse-lookup"])
 
 # Confidence rule, calibrated on the benchmark's dev library (CellMarker) only:
 # the top hit must be expressed (mean fraction >= _MIN_SCORE) and lead the best
-# hit of any *other* cell type by >= _MIN_MARGIN of its score. On held-out
-# libraries this splits top-1 precision 0.62 (confident) vs 0.33 (not).
+# hit of any genuinely *different* cell type by >= _MIN_MARGIN of its score. The
+# same type in another organ and close ontology relatives (memory vs naive B
+# cell, macrophage vs alveolar macrophage) are not competitors: the answer is
+# right either way. On held-out libraries this splits top-1 precision 0.67
+# (confident, 32% of queries) vs 0.29 (not).
 _MIN_SCORE = 0.30
 _MIN_MARGIN = 0.10
 _MAX_GENES = 200
@@ -127,9 +130,10 @@ def reverse_lookup(
     hits.sort(key=lambda h: h.score, reverse=True)
     top_hits = hits[:limit]
     best = top_hits[0]
-    # The same cell type in another organ is not a competing answer.
+    # The same cell type in another organ, or a close relative, is not a competing answer.
     best_key = best.cl_id or best.ontology_label
-    runner_up = next((h.score for h in hits if (h.cl_id or h.ontology_label) != best_key), 0.0)
+    allied = {best_key} | set(data.cl_relatives().get(best_key, ()))
+    runner_up = next((h.score for h in hits if (h.cl_id or h.ontology_label) not in allied), 0.0)
     margin = (best.score - runner_up) / best.score if best.score > 0 else 0.0
     is_confident = (
         best.score >= _MIN_SCORE

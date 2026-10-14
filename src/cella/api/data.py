@@ -61,6 +61,16 @@ def graph_edges() -> pd.DataFrame:
     return _read("graph_edges.parquet")
 
 
+@lru_cache(maxsize=1)
+def cl_relatives() -> dict[str, frozenset[str]]:
+    """Close ontology relatives per CL term; empty if the artifact predates it."""
+    path = settings.processed_dir / "cl_relatives.parquet"
+    if not path.exists():
+        return {}
+    df = pd.read_parquet(path)
+    return {str(k): frozenset(v) for k, v in df.groupby("cl_id")["relative"]}
+
+
 @lru_cache(maxsize=16)
 def weights(slug: str) -> pd.DataFrame:
     """Full classifier weight matrix (curated cell type x gene) for one organ."""

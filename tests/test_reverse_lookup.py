@@ -85,3 +85,11 @@ def test_hit_genes_carry_expression_and_weight(client: TestClient) -> None:
     assert top["ontology_label"] == "type II pneumocyte"
     assert all(0.0 <= g["pct"] <= 1.0 for g in top["top_genes"])
     assert any(g["coef"] is not None for g in top["top_genes"])
+
+
+def test_close_relative_runner_up_does_not_block_confidence(client: TestClient) -> None:
+    # Alveolar macrophage trails macrophage closely; both answers are right, so
+    # the call should still be confident.
+    body = client.get("/reverse-lookup", params={"genes": "MARCO,FABP4,C1QA"}).json()
+    assert "macrophage" in body["hits"][0]["ontology_label"]
+    assert body["is_confident"] is True

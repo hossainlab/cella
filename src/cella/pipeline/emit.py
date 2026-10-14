@@ -4,6 +4,7 @@ Write the query-ready artifacts the online app serves, into
 ``settings.processed_dir`` as Parquet:
 
     registry.parquet          canonical cross-organ cell types (CELL_TYPE, ~145)
+    cl_relatives.parquet      close ontology relatives among the registry terms
     cell_type_organ.parquet   per (organ, curated type) counts + CL id (~399)
     weights/<Organ>.parquet    full classifier.coef_ (cell_type x gene) per organ
     markers.parquet            top-N discriminative genes per (organ, cell type),
@@ -21,6 +22,7 @@ import pandas as pd
 from cella.core.config import ORGANS, settings
 from cella.pipeline.extract import extract_weights, load_obs
 from cella.pipeline.harmonize import build_long_metadata, build_registry
+from cella.pipeline.ontology import close_relatives
 
 # obs columns summarized for the Organ Browser meta panel.
 _META_COLS = {
@@ -69,6 +71,11 @@ def emit_metadata() -> tuple[pd.DataFrame, pd.DataFrame]:
     )
     reg_out.to_parquet(out / "registry.parquet")
     long.to_parquet(out / "cell_type_organ.parquet")
+    relatives = close_relatives(sorted(registry["cl_id"].dropna().unique()))
+    pd.DataFrame(
+        [(cid, rel) for cid, rels in sorted(relatives.items()) for rel in sorted(rels)],
+        columns=["cl_id", "relative"],
+    ).to_parquet(out / "cl_relatives.parquet")
     return registry, long
 
 
