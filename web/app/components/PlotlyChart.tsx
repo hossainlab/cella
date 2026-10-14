@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { fetchOrganFigure } from "@/lib/api";
 import { plotlyThemeLayout, useResolvedTheme } from "@/lib/theme";
 
 interface Figure {
   data: unknown[];
   layout: Record<string, unknown>;
 }
+
+type FigureProps = Parameters<typeof fetchOrganFigure>;
 
 /** Deep-merge theme overrides into a figure layout (axes keep their own settings). */
 function themed(layout: Record<string, unknown>): Record<string, unknown> {
@@ -31,8 +34,21 @@ function themed(layout: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
-/** Fetches a Plotly figure (built in Python) as JSON and renders it interactively. */
-export default function PlotlyChart({ url }: { url: string }) {
+/**
+ * Renders an Organ Browser Plotly figure interactively. The figure comes from the
+ * API (built in Python) or, in static mode, from an exported file or the browser.
+ */
+export default function PlotlyChart({
+  slug,
+  kind,
+  collection,
+  genes,
+}: {
+  slug: FigureProps[0];
+  kind: FigureProps[1];
+  collection?: string;
+  genes?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,12 +63,13 @@ export default function PlotlyChart({ url }: { url: string }) {
       setLoading(true);
       setErr(null);
       try {
-        const [res, mod] = await Promise.all([
-          fetch(url),
+        const [fig, mod] = await Promise.all([
+          fetchOrganFigure(slug, kind, {
+            collection,
+            genes,
+          }) as Promise<Figure>,
           import("plotly.js-dist-min"),
         ]);
-        if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-        const fig = (await res.json()) as Figure;
         if (cancelled || !ref.current) return;
         const Plotly = mod.default;
         const el = ref.current;
@@ -74,7 +91,7 @@ export default function PlotlyChart({ url }: { url: string }) {
       cancelled = true;
       purge?.();
     };
-  }, [url]);
+  }, [slug, kind, collection, genes]);
 
   // Recolor in place when the theme flips; no refetch.
   useEffect(() => {

@@ -95,5 +95,17 @@ def graph() -> None:
     build_relationship_graph()
 
 
+@app.command("export")
+def export_static(
+    out: str = typer.Option("web/public/data", help="Directory for the static site data."),
+) -> None:
+    """Static site — write every fixed API response + compact expression tables."""
+    from pathlib import Path
+
+    from cella.api.export import export_all
+
+    export_all(Path(out))
+
+
 if __name__ == "__main__":
     app()

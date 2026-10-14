@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { listOrgans } from "@/lib/api";
 import type { OrganSummary } from "@/lib/types";
@@ -34,6 +35,7 @@ const ORGAN_ICONS: Record<string, string> = {
 };
 
 export default function OrgansPage() {
+  const router = useRouter();
   const [organs, setOrgans] = useState<OrganSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -179,7 +181,7 @@ export default function OrgansPage() {
                   key={o.slug}
                   className="data-row"
                   onClick={() => {
-                    window.location.href = `/organs/${o.slug}`;
+                    router.push(`/organs/${o.slug}`);
                   }}
                 >
                   <td className="organ-name">
