@@ -54,11 +54,16 @@ def acquire(
 
 
 @app.command()
-def build(top_n: int = typer.Option(25, help="Top-N markers per direction per cell type.")) -> None:
+def build(
+    top_n: int = typer.Option(25, help="Top-N markers per direction per cell type."),
+    min_pct: float = typer.Option(
+        0.1, help="Min fraction of cells expressing a gene for it to count as a marker."
+    ),
+) -> None:
     """P1 — harmonize + emit artifacts (registry, counts, weights, markers)."""
     from cella.pipeline.emit import emit_all
 
-    emit_all(top_n=top_n)
+    emit_all(top_n=top_n, min_pct=min_pct)
 
 
 @app.command()

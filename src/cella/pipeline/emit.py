@@ -6,7 +6,8 @@ Write the query-ready artifacts the online app serves, into
     registry.parquet          canonical cross-organ cell types (CELL_TYPE, ~145)
     cell_type_organ.parquet   per (organ, curated type) counts + CL id (~399)
     weights/<Organ>.parquet    full classifier.coef_ (cell_type x gene) per organ
-    markers.parquet            top-N discriminative genes per (organ, cell type)
+    markers.parquet            top-N discriminative genes per (organ, cell type),
+                               gated on expression prevalence (see select_markers)
 
 The markers table is the direct input to the Discriminative Marker Atlas and the
 Fingerprint Explorer; the full weight matrices back consensus/fingerprint math.
@@ -71,7 +72,41 @@ def emit_metadata() -> tuple[pd.DataFrame, pd.DataFrame]:
     return registry, long
 
 
-def emit_weights_and_markers(top_n: int = 25) -> pd.DataFrame:
+def select_markers(
+    coef: pd.Series,
+    pct_in: pd.Series,
+    pct_out_max: pd.Series,
+    top_n: int = 25,
+    min_pct: float = 0.1,
+) -> dict[str, pd.Series]:
+    """Top-N positive and negative markers, gated on expression prevalence.
+
+    CellTypist scales each gene before fitting, so a gene detected in almost no
+    cells gets a large scaled value wherever it does appear and can earn a large
+    coefficient for a rare class (e.g. FOXP3 in lung goblet cells). Such genes
+    help the classifier on a handful of training cells but are not markers.
+
+    A positive marker must be expressed in at least ``min_pct`` of the cell
+    type's own cells. A negative marker argues *against* the cell type, which is
+    only informative if some other cell type in the organ expresses it, so it
+    must reach ``min_pct`` in at least one other cell type.
+    """
+    pct_in = pct_in.reindex(coef.index)
+    pct_out_max = pct_out_max.reindex(coef.index)
+    positive = coef[pct_in >= min_pct].sort_values(ascending=False).head(top_n)
+    negative = coef[pct_out_max >= min_pct].sort_values().head(top_n)
+    return {"positive": positive, "negative": negative}
+
+
+def _load_pct(organ: str) -> pd.DataFrame:
+    """Fraction of cells expressing each gene, per curated label (from ``cella derive``)."""
+    path = settings.processed_dir / "expression" / f"{organ.replace(' ', '_')}__pct.parquet"
+    if not path.exists():
+        raise FileNotFoundError(f"{path} missing - run `cella derive` before `cella build`")
+    return pd.read_parquet(path)
+
+
+def emit_weights_and_markers(top_n: int = 25, min_pct: float = 0.1) -> pd.DataFrame:
     """Emit per-organ weight matrices and a combined top-N markers table."""
     out = settings.processed_dir
     (out / "weights").mkdir(parents=True, exist_ok=True)
@@ -83,17 +118,20 @@ def emit_weights_and_markers(top_n: int = 25) -> pd.DataFrame:
     for organ in ORGANS:
         w = extract_weights(organ)
         w.matrix.to_parquet(out / "weights" / f"{organ.replace(' ', '_')}.parquet")
+        pct = _load_pct(organ).reindex(columns=w.matrix.columns)
         for cell_type, row in w.matrix.iterrows():
-            ordered = row.sort_values(ascending=False)
-            top = ordered.head(top_n)
-            bottom = ordered.tail(top_n)
-            for direction, series in (("positive", top), ("negative", bottom)):
+            pct_in = pct.loc[cell_type]
+            pct_out_max = pct.drop(index=cell_type).max()
+            selected = select_markers(row, pct_in, pct_out_max, top_n=top_n, min_pct=min_pct)
+            for direction, series in selected.items():
                 frame = series.rename_axis("gene").reset_index(name="coef")
                 frame.insert(0, "organ", organ)
                 frame.insert(1, "cell_type", cell_type)
                 frame.insert(2, "cl_id", key.get((organ, cell_type)))
                 frame["direction"] = direction
                 frame["rank"] = range(1, len(frame) + 1)
+                frame["pct_in"] = pct_in.reindex(series.index).to_numpy(dtype="float32")
+                frame["pct_out_max"] = pct_out_max.reindex(series.index).to_numpy(dtype="float32")
                 marker_frames.append(frame)
 
     markers = pd.concat(marker_frames, ignore_index=True)
@@ -101,10 +139,10 @@ def emit_weights_and_markers(top_n: int = 25) -> pd.DataFrame:
     return markers
 
 
-def emit_all(top_n: int = 25) -> None:
+def emit_all(top_n: int = 25, min_pct: float = 0.1) -> None:
     """Emit every artifact. Idempotent; overwrites in place."""
     registry, long = emit_metadata()
-    markers = emit_weights_and_markers(top_n=top_n)
+    markers = emit_weights_and_markers(top_n=top_n, min_pct=min_pct)
     print(
         f"emitted: registry={len(registry)} nodes, "
         f"cell_type_organ={len(long)} rows, markers={len(markers)} rows "
