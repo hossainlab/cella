@@ -24,6 +24,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.stats import binomtest, mannwhitneyu, spearmanr, wilcoxon
+from statsmodels.stats.multitest import multipletests
+from statsmodels.stats.proportion import proportion_confint
 
 warnings.filterwarnings("ignore")
 
@@ -161,6 +163,11 @@ def figure_gating() -> None:
                     "n_cells_pct": None,
                 }
             )
+            canon = {("Lung", "Goblet cells"): ("MUC5AC", "Goblet"), ("Heart", "Adipocytes"): ("PPARG", "Adipo")}
+            if (organ, ct) in canon:
+                gname, key = canon[(organ, ct)]
+                num(f"gate{key}GatedRank", list(gated.index).index(gname) + 1)
+                num(f"gate{key}RawRank", int(coef.rank(ascending=False, method="min")[gname]))
             if (organ, ct) in examples:
                 example_rows.append((organ, ct, list(raw.index[:6]), list(gated.index[:6]), pin))
     df = pd.DataFrame(rows)
@@ -192,7 +199,7 @@ def figure_gating() -> None:
 
     ax2.scatter(df["cell_count"], df["frac25"], s=9, color=SLOTS[0], alpha=0.55, linewidths=0)
     ax2.set_xscale("log")
-    ax2.set_xlabel("Training cells for the label (log scale)")
+    ax2.set_xlabel("Cells of the label in the atlas (log scale)")
     ax2.set_ylabel("Fraction of raw top-25 markers\nbelow 10% prevalence")
     ax2.set_title(f"Spearman ρ = {rho:.2f}", fontsize=8, color=INK2, loc="left")
     panel_label(ax2, "b")
@@ -292,6 +299,32 @@ def figure_lookup() -> None:
     num("lkMcNemarP", pfmt(binomtest(n10, n10 + n01, 0.5).pvalue))
     num("lkDisc", f"{n10}")
     num("lkDiscRev", f"{n01}")
+    # Expression against the next-best rules: is its lead over them significant?
+    for other, key in [("hypergeom", "Hyper"), ("hybrid", "Hybrid")]:
+        b = piv[other] <= 1
+        m10, m01 = int((a & ~b).sum()), int((~a & b).sum())
+        num(f"lk{key}Disc", m10)
+        num(f"lk{key}DiscRev", m01)
+        num(f"lk{key}McNemarP", pfmt(binomtest(m10, m10 + m01, 0.5).pvalue))
+
+    # Per-library top-1 (independent queries), to show where each rule wins.
+    lib = ind.groupby(["library", "method"])["rank_relaxed"].apply(lambda r: (r <= 1).mean()).unstack()
+    libkey = {"Tabula_Sapiens": "TS", "Azimuth_2023": "Az", "PanglaoDB_Augmented_2021": "Pg",
+              "CellMarker_2024": "CM"}
+    for lname, key in libkey.items():
+        num(f"lk{key}N", ind.loc[ind["library"] == lname, "term"].nunique())
+        for m, mk in [("expr_pct", "Expr"), ("hypergeom", "Hyper"), ("weight_mean", "Wmean")]:
+            num(f"lk{key}{mk}TopOne", pct(lib.loc[lname, m]))
+    num("lkLibExprGtWmean", int((lib["expr_pct"] > lib["weight_mean"]).sum()))
+    num("lkLibHyperGtExpr", int((lib["hypergeom"] > lib["expr_pct"]).sum()))
+
+    # Development-library metrics of the leading rules.
+    def dev_metric(m: str, f) -> float:
+        return f(dev[dev["method"] == m]["rank_relaxed"])
+    for m, key in [("expr_pct", "Expr"), ("hypergeom", "Hyper"), ("expr_spec", "Espec")]:
+        num(f"lkDev{key}TopOneX", pct(dev_metric(m, lambda r: (r <= 1).mean())))
+        num(f"lkDev{key}TopFive", pct(dev_metric(m, lambda r: (r <= 5).mean())))
+        num(f"lkDev{key}MRR", f"{dev_metric(m, lambda r: (1 / r).mean()):.2f}")
 
     # Dev library numbers (selection set).
     num("lkDevExprTopOne", pct((dev[dev["method"] == "expr_pct"]["rank_relaxed"] <= 1).mean()))
@@ -314,6 +347,15 @@ def figure_lookup() -> None:
     num("calConfFrac", pct(row["confident_frac"]))
     num("calPrecConf", f"{row['precision_confident']:.2f}")
     num("calPrecRest", f"{row['precision_rest']:.2f}")
+    n_conf = round(row["confident_frac"] * row["n"])
+    n_rest = int(row["n"]) - n_conf
+    for key, prec, n in [("Conf", row["precision_confident"], n_conf), ("Rest", row["precision_rest"], n_rest)]:
+        lo, hi = proportion_confint(round(prec * n), n, method="wilson")
+        num(f"calPrec{key}CI", f"{lo:.2f}--{hi:.2f}")
+        num(f"calN{key}", n)
+    margins = cal[cal["split"] == "dev"].sort_values("min_margin")
+    num("calMarginMin", f"{margins['min_margin'].min():.2f}")
+    num("calMarginMax", f"{margins['min_margin'].max():.2f}")
     drow = cal[(cal["min_margin"] == 0.10) & (cal["split"] == "dev")].iloc[0]
     num("calDevPrecConf", f"{drow['precision_confident']:.2f}")
     cal.to_csv(OUT / "supplementary_calibration.csv", index=False)
@@ -374,8 +416,8 @@ def figure_lookup() -> None:
         d = ind[(ind["method"] == m) & (ind["split"] == "dev")]
         s = stats[m]
         lines.append(
-            f"{LOOKUP_NAMES[m]} & {(d['rank_relaxed'] <= 1).mean():.2f} & {s['top1']:.2f} & "
-            f"{s['top5']:.2f} & {s['mrr']:.2f} \\\\"
+            f"{LOOKUP_NAMES[m]} & {(d['rank_relaxed'] <= 1).mean():.2f} & {(d['rank_relaxed'] <= 5).mean():.2f} & "
+            f"{(1 / d['rank_relaxed']).mean():.2f} & {s['top1']:.2f} & {s['top5']:.2f} & {s['mrr']:.2f} \\\\"
         )
     (OUT / "table_lookup.tex").write_text("\n".join(lines) + "\n")
 
@@ -402,14 +444,30 @@ def figure_panels() -> None:
         d = p["coef_gated"] - p[other]
         return float(d.mean()), int((d > 0).sum()), len(d), float(wilcoxon(d).pvalue)
 
+    tests = []
     for metric, mk in [("marker_f1", "M"), ("lr_f1", "L")]:
-        for k in (5, 10, 20):
+        for k in (3, 5, 10, 20):
             for other, ok in [("coef_raw", "Raw"), ("de_wilcoxon", "Wilc"), ("de_logfc", "Lfc")]:
                 d, wins, n, p = paired(metric, k, other)
-                kk = {5: "Five", 10: "Ten", 20: "Twenty"}[k]
+                kk = {3: "Three", 5: "Five", 10: "Ten", 20: "Twenty"}[k]
                 num(f"pn{mk}{kk}{ok}Diff", f"{d:+.3f}")
                 num(f"pn{mk}{kk}{ok}Wins", f"{wins}/{n}")
                 num(f"pn{mk}{kk}{ok}P", pfmt(p))
+                tests.append((f"pn{mk}{kk}{ok}PHolm", p))
+    # Holm correction over every paired comparison reported (2 readouts x 4 k x 3 methods).
+    holm = multipletests([p for _, p in tests], method="holm")[1]
+    for (name, _), ph in zip(tests, holm, strict=True):
+        num(name, pfmt(ph))
+    num("pnNTests", len(tests))
+    adj = {name: ph for (name, _), ph in zip(tests, holm, strict=True)}
+    num("pnRawMaxPHolm", pfmt(max(v for n, v in adj.items() if "Raw" in n)))
+    num("pnMWilcOtherMinPHolm", pfmt(min(adj[f"pnM{k}WilcPHolm"] for k in ("Three", "Five", "Ten"))))
+    pv = res[res["k"] == 10].pivot_table(index=["organ", "held_out"], columns="method", values="marker_f1")
+    by_organ = (pv["coef_gated"] - pv["de_wilcoxon"]).groupby(level="organ").mean()
+    num("pnWilcOrgansBetter", int((by_organ < 0).sum()))
+    per_organ = res.groupby("organ")["held_out"].nunique()
+    num("pnSplitsPerOrgan", f"{per_organ.min()}" if per_organ.min() == per_organ.max()
+        else f"{per_organ.min()}--{per_organ.max()}")
     size = res[res["k"] == 10].groupby("method")["panel_size"].mean()
     num("pnSizeGated", f"{size['coef_gated']:.0f}")
     num("pnSizeWilc", f"{size['de_wilcoxon']:.0f}")
@@ -456,11 +514,12 @@ def invariance_numbers() -> None:
     num("invMulti", len(s))
     num("invTierOne", len(t1))
     num("invTierTwo", int((s["tier"] == "granularity-resolved").sum()))
+    num("invNExcluded", int((s["tier"] == "excluded").sum()))
 
     def test(col: str, frame: pd.DataFrame) -> tuple[int, int, float, float, float]:
         c = frame.loc[frame["lineage"].isin(circ_l), col].dropna()
         r = frame.loc[frame["lineage"].isin(res_l), col].dropna()
-        return len(c), len(r), c.median(), r.median(), mannwhitneyu(c, r, alternative="greater").pvalue
+        return len(c), len(r), c.median(), r.median(), mannwhitneyu(c, r, alternative="two-sided").pvalue
 
     nc, nr, mc, mr, p = test("invariance", t1)
     num("invRawP", pfmt(p))
@@ -478,32 +537,45 @@ def invariance_numbers() -> None:
 
     sig = calibrate_pairs(pairs)
     lym = {"Blood", "Bone marrow", "Spleen", "Lymph node"}
-    n = sig["organ_a"].isin(lym).astype(int) + sig["organ_b"].isin(lym).astype(int)
-    null_by = sig.groupby(n)["null_mean"].mean()
+    # One row per organ pair, so each pair counts once in the averages below.
+    per_pair = sig.drop_duplicates(["organ_a", "organ_b"])
+    n = per_pair["organ_a"].isin(lym).astype(int) + per_pair["organ_b"].isin(lym).astype(int)
+    null_by = per_pair.groupby(n)["null_mean"].mean()
+    num("invNPairsLL", int((n == 2).sum()))
+    num("invNPairsPP", int((n == 0).sum()))
     num("invNullLL", f"{null_by.loc[2]:.3f}")
     num("invNullPP", f"{null_by.loc[0]:.3f}")
+    null_sd = per_pair["null_sd"]
+    num("invNullSD", f"{null_sd.median():.3f}")
+    num("invNullSDRange", f"{null_sd.min():.2f}--{null_sd.max():.2f}")
+    figure_invariance(s, float(null_sd.median()))
 
-    both = s[s["tier"].isin(["specific", "granularity-resolved"])]
-    rho, p = spearmanr(both["invariance_calibrated"], np.log10(both["total_cells"]))
+    # Sensitivity: drop haematopoietic terms that are tissue-resident rather than circulating.
+    resident_immune = ["mast cell", "conventional dendritic cell"]
+    nc, nr, mc, mr, p = test("invariance_calibrated", t1[~t1["ontology_label"].isin(resident_immune)])
+    num("invSensNHaem", nc)
+    num("invSensP", pfmt(p))
+
+    rho, p = spearmanr(t1["invariance_calibrated"], np.log10(t1["total_cells"]))
     num("invRhoCells", f"{rho:+.2f}")
     num("invRhoCellsP", f"{p:.2f}")
     st = pd.read_parquet(PROC / "invariance_with_stability.parquet")
     st = st[(st["tier"] == "specific") & st["stability"].notna()]
+    num("invNStab", len(st))
     rho, p = spearmanr(st["invariance_calibrated"], st["stability"])
     num("invRhoStab", f"{rho:+.2f}")
     num("invRhoStabP", f"{p:.2f}")
-    figure_invariance(s)
 
 
 LINEAGE_ORDER = ["Erythroid/Mega", "Lymphoid", "Myeloid", "Epithelial", "Endothelial",
                  "Mesenchymal/Stromal"]
 
 
-def figure_invariance(s: pd.DataFrame) -> None:
+def figure_invariance(s: pd.DataFrame, sd: float) -> None:
     """Print-sized invariance figure: calibrated score per term, then by lineage.
 
-    Circulating lineages use the blue slot and tissue-resident ones the orange
-    slot; the lineage itself is named on the axis, so colour only groups.
+    Haematopoietic lineages use the blue slot and structural (non-haematopoietic)
+    ones the orange slot; the lineage itself is named on the axis, so colour only groups.
     """
     circ = {"Lymphoid", "Erythroid/Mega", "Myeloid"}
     t1 = s[s["tier"] == "specific"].sort_values("invariance_calibrated")
@@ -512,7 +584,6 @@ def figure_invariance(s: pd.DataFrame) -> None:
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.2, 4.6), gridspec_kw={"width_ratios": [1.5, 1]})
     y = np.arange(len(t1))
-    sd = 0.085  # typical per-organ-pair null SD, for the band
     ax1.axvspan(-sd, sd, color=GRID, zorder=0)
     ax1.axvline(0, color=INK2, lw=0.7, ls="--", zorder=1)
     cs = [col(lin) for lin in t1["lineage"]]
@@ -525,9 +596,9 @@ def figure_invariance(s: pd.DataFrame) -> None:
     ax1.grid(axis="y", visible=False)
     ax1.set_ylim(-0.8, len(t1) - 0.2)
     panel_label(ax1, "a")
-    ax1.plot([], [], "o", color=SLOTS[0], ms=4, label="circulating lineage")
-    ax1.plot([], [], "o", color=SLOTS[1], ms=4, label="tissue-resident lineage")
-    ax1.plot([], [], "s", color=GRID, ms=7, label="null \u00b1 1 SD")
+    ax1.plot([], [], "o", color=SLOTS[0], ms=4, label="haematopoietic lineage")
+    ax1.plot([], [], "o", color=SLOTS[1], ms=4, label="structural lineage")
+    ax1.plot([], [], "s", color=GRID, ms=7, label="median null \u00b1 1 SD")
 
     lins = [lin for lin in LINEAGE_ORDER if (t1["lineage"] == lin).any()]
     rng = np.random.default_rng(0)
